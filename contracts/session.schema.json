@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "session",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "session_id",
+    "source",
+    "stage",
+    "started_at",
+    "sensor",
+    "firmware_revision",
+    "clock_id",
+    "split",
+    "contains_location",
+    "distance_definition",
+    "label_protocol_version"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "session_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "source": {
+      "enum": [
+        "real",
+        "simulated"
+      ]
+    },
+    "stage": {
+      "enum": [
+        "raw",
+        "processed",
+        "labeled",
+        "simulated"
+      ]
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sensor": {
+      "enum": [
+        "LD2451",
+        "LD2417"
+      ]
+    },
+    "firmware_revision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "clock_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "split": {
+      "enum": [
+        "unassigned",
+        "train",
+        "validation",
+        "test"
+      ]
+    },
+    "contains_location": {
+      "type": "boolean"
+    },
+    "distance_definition": {
+      "enum": [
+        "unspecified",
+        "radial",
+        "axis_y"
+      ]
+    },
+    "label_protocol_version": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "examples": [
+    {
+      "schema_version": 1,
+      "session_id": "00000000-0000-4000-8000-000000000001",
+      "source": "simulated",
+      "stage": "simulated",
+      "started_at": "2026-11-06T00:00:00Z",
+      "sensor": "LD2451",
+      "firmware_revision": "example-only",
+      "clock_id": "example-boot",
+      "split": "unassigned",
+      "contains_location": false,
+      "distance_definition": "unspecified",
+      "label_protocol_version": null
+    }
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "stage": {
+            "const": "simulated"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "source": {
+            "const": "simulated"
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,164 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  changes:
+    runs-on: ubuntu-24.04
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      admin: ${{ steps.filter.outputs.admin }}
+      mobile: ${{ steps.filter.outputs.mobile }}
+      firmware: ${{ steps.filter.outputs.firmware }}
+      ai: ${{ steps.filter.outputs.ai }}
+      contracts: ${{ steps.filter.outputs.contracts }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: filter
+        shell: python
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          import os, subprocess
+          from pathlib import Path
+          base = os.environ.get('BASE', '')
+          all_jobs = os.environ['EVENT'] == 'workflow_dispatch' or not base or set(base) == {'0'}
+          if not all_jobs:
+              result = subprocess.run(['git', 'diff', '--name-only', base, 'HEAD'], capture_output=True, text=True)
+              all_jobs = result.returncode != 0
+              paths = result.stdout.splitlines()
+          else:
+              paths = []
+          shared = all_jobs or any(p.startswith(('contracts/', 'scripts/', '.github/')) for p in paths)
+          prefixes = {'backend': ('apps/backend/', 'infra/'), 'admin': ('apps/admin-web/',),
+                      'mobile': ('apps/mobile/',), 'firmware': ('firmware/',), 'ai': ('ai/',),
+                      'contracts': ('contracts/', 'scripts/')}
+          with Path(os.environ['GITHUB_OUTPUT']).open('a') as output:
+              for name, prefix in prefixes.items():
+                  affected = shared or any(p.startswith(prefix) for p in paths)
+                  output.write(f'{name}={str(affected).lower()}\n')
+  backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:17.11-alpine
+        env:
+          POSTGRES_DB: rideguard
+          POSTGRES_USER: rideguard
+          POSTGRES_PASSWORD: ci-only-ephemeral-password
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U rideguard -d rideguard"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      DB_URL: jdbc:postgresql://localhost:5432/rideguard
+      DB_USER: rideguard
+      DB_PASSWORD: ci-only-ephemeral-password
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: apps/backend/pom.xml
+      - run: bash ./mvnw -B -ntp verify
+        working-directory: apps/backend
+  admin:
+    needs: changes
+    if: needs.changes.outputs.admin == 'true'
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: apps/admin-web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.19.0'
+          cache: npm
+          cache-dependency-path: apps/admin-web/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run build
+  ai:
+    needs: changes
+    if: needs.changes.outputs.ai == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: |
+          python -m venv ai/.venv
+          ai/.venv/bin/python -m pip install ./ai
+          ai/.venv/bin/python -m unittest discover -s ai/tests -v
+          ai/.venv/bin/python -c "import rideguard_ai; print(rideguard_ai.__version__)"
+          ai/.venv/bin/python -m pip wheel --no-deps ./ai -w ai/dist
+  firmware:
+    needs: changes
+    if: needs.changes.outputs.firmware == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: |
+          python -m venv firmware/.venv
+          firmware/.venv/bin/python -m pip install -r firmware/requirements.lock
+          firmware/.venv/bin/python -m platformio run -d firmware -e ld2451 -e ld2417
+  mobile:
+    needs: changes
+    if: needs.changes.outputs.mobile == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - run: bash ./gradlew --no-daemon :app:assembleDebug :app:lintDebug
+        working-directory: apps/mobile
+  contracts:
+    needs: changes
+    if: needs.changes.outputs.contracts == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: |
+          python -m venv scripts/.venv
+          scripts/.venv/bin/python -m pip install -r scripts/requirements.lock
+          scripts/.venv/bin/python scripts/check_contracts.py
+  required:
+    if: always()
+    needs: [changes, backend, admin, ai, firmware, mobile, contracts]
+    runs-on: ubuntu-24.04
+    steps:
+      - shell: python
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          import json, os
+          results = json.loads(os.environ['RESULTS'])
+          assert results['changes']['result'] == 'success', results
+          assert all(v['result'] in ('success', 'skipped') for v in results.values()), results

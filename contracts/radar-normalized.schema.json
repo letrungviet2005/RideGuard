@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "radar-normalized",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "sensor",
+    "status",
+    "received_monotonic_ms",
+    "clock_id",
+    "distance_definition",
+    "distance_unit",
+    "distance_m",
+    "speed_unit",
+    "speed_mps",
+    "target_id",
+    "target_id_stability"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "sensor": {
+      "enum": [
+        "LD2451",
+        "LD2417"
+      ]
+    },
+    "status": {
+      "enum": [
+        "unavailable",
+        "valid",
+        "stale",
+        "fault"
+      ]
+    },
+    "received_monotonic_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "clock_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "distance_definition": {
+      "enum": [
+        "unspecified",
+        "radial",
+        "axis_y"
+      ]
+    },
+    "distance_unit": {
+      "const": "m"
+    },
+    "distance_m": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "speed_unit": {
+      "const": "m/s"
+    },
+    "speed_mps": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "target_id": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "target_id_stability": {
+      "const": "unverified"
+    }
+  },
+  "examples": [
+    {
+      "schema_version": 1,
+      "sensor": "LD2417",
+      "status": "unavailable",
+      "received_monotonic_ms": 0,
+      "clock_id": "boot-example",
+      "distance_definition": "unspecified",
+      "distance_unit": "m",
+      "distance_m": null,
+      "speed_unit": "m/s",
+      "speed_mps": null,
+      "target_id": null,
+      "target_id_stability": "unverified"
+    }
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "distance_definition": {
+            "const": "unspecified"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "distance_m": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "enum": [
+              "unavailable",
+              "fault"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "distance_m": {
+            "type": "null"
+          },
+          "speed_mps": {
+            "type": "null"
+          },
+          "target_id": {
+            "type": "null"
+          }
+        }
+      }
+    }
+  ]
+}

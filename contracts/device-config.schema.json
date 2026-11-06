@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "device-config",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "binding_id",
+    "desired_version",
+    "reported_applied_version",
+    "settings"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "binding_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "desired_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "reported_applied_version": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1
+    },
+    "settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {}
+    }
+  },
+  "examples": [
+    {
+      "schema_version": 1,
+      "binding_id": "00000000-0000-4000-8000-000000000002",
+      "desired_version": 1,
+      "reported_applied_version": null,
+      "settings": {}
+    }
+  ]
+}

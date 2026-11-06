@@ -1,0 +1,4 @@
+schema_version = 1
+split_unit = "session"
+split_method = "sha256-first-8-bytes-mod-100"
+training_enabled = false

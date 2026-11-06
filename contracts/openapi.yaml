@@ -1,0 +1,58 @@
+openapi: 3.1.0
+info:
+  title: RideGuard implemented HTTP API
+  version: 0.1.0
+  description: Only health probes are implemented. Proposed business API is in ../docs/api/proposed-api.md.
+paths:
+  /actuator/health:
+    get:
+      operationId: health
+      summary: Aggregate health (includes database)
+      responses:
+        '200': { $ref: '#/components/responses/Healthy' }
+        '503': { $ref: '#/components/responses/Unhealthy' }
+  /actuator/health/liveness:
+    get:
+      operationId: liveness
+      summary: Process liveness (does not require database after startup)
+      responses:
+        '200': { $ref: '#/components/responses/Healthy' }
+        '503': { $ref: '#/components/responses/Unhealthy' }
+  /actuator/health/readiness:
+    get:
+      operationId: readiness
+      summary: Ready to serve only when application and database are available
+      responses:
+        '200': { $ref: '#/components/responses/Healthy' }
+        '503': { $ref: '#/components/responses/Unhealthy' }
+components:
+  schemas:
+    Health:
+      type: object
+      required: [status]
+      additionalProperties: false
+      properties:
+        status: { type: string, enum: [UP, DOWN, OUT_OF_SERVICE, UNKNOWN] }
+        groups:
+          type: array
+          description: Public probe group names on aggregate health only
+          items: { type: string, enum: [liveness, readiness] }
+    ApiError:
+      type: object
+      required: [status, code, message]
+      additionalProperties: false
+      properties:
+        status: { type: integer, minimum: 400, maximum: 599 }
+        code: { type: string }
+        message: { type: string }
+  responses:
+    Healthy:
+      description: Healthy, without component details
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Health' }
+    Unhealthy:
+      description: Not healthy or not ready; no sensitive details
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Health' }

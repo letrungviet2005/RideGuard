@@ -1,0 +1,32 @@
+debug: false
+spring:
+  application:
+    name: rideguard
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/rideguard}
+    username: ${DB_USER:rideguard}
+    password: ${DB_PASSWORD}
+    hikari:
+      connection-timeout: 3000
+  flyway:
+    enabled: true
+server:
+  port: ${PORT:8080}
+  error:
+    include-message: never
+    include-stacktrace: never
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,db
