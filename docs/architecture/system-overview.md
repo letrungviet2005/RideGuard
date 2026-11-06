@@ -1,45 +1,62 @@
-# Kiến trúc hệ thống
+# Kiến trúc RideGuard — implemented foundation / proposed MVP
 
-ESP32 xử lý radar → tracking → features → risk → HUD/rung tại chỗ. Không có
-backend, Internet hoặc đăng nhập trong đường cảnh báo. Thiếu dữ liệu, mất cảm biến,
-chưa khởi tạo hoặc dữ liệu quá hạn phải là UNKNOWN/UNAVAILABLE/FAULT, không phải SAFE.
-Nền tảng hiện tại chưa đánh giá nguy cơ và không điều khiển GPIO ngoại vi.
+Monorepo và đường dẫn thực tế giữ nguyên. Implemented: health/security/error nền tảng,
+FE foundation, firmware startup/stubs, Python session split; không có nghiệp vụ hoặc ML
+đã chạy. [Implemented API](../../contracts/openapi.yaml),
+[proposed MVP](../../contracts/openapi.proposed.yaml), [deferred](../roadmap.md).
 
-Android gửi chỉ dẫn điều hướng qua BLE và quản lý tài khoản/cấu hình/hành trình qua
-REST. BLE và REST là hai adapter độc lập. GPS điện thoại dùng dẫn đường/ghi hành trình,
-không là tín hiệu chính kích hoạt cảnh báo rẽ. IMU không biết trước ý định rẽ.
-Backend và PostgreSQL lưu nghiệp vụ; admin web chỉ quản trị phạm vi được cấp quyền.
-AI là nghiên cứu offline, chưa có mô hình, inference server hoặc số liệu độ chính xác.
+```mermaid
+flowchart LR
+    Mobile[Android Kotlin user FE] -->|REST qua Internet| Backend[Spring Boot REST]
+    Admin[React TypeScript admin FE] -->|REST qua Internet| Backend
+    Backend --> DB[(PostgreSQL MVP)]
+    Mobile <-->|BLE navigation config ACK status| ESP[ESP32 local pipeline]
+    Radar[Radar LD2451 or LD2417] --> ESP
+    IMU[IMU module TBD] --> ESP
+    ESP --> HUD[HUD ST7789]
+    ESP --> Motor[Vibration driver]
+    GPS[Phone GPS for navigation only] --> Mobile
+```
 
-## Phân chia mã nguồn khi có nghiệp vụ
+Backend không gọi REST trên điện thoại; mobile chủ động gọi backend. Radar+IMU → temporal
+features/tracking → risk → HUD/rung trên ESP32; không gửi radar cloud chờ quyết định. Mất
+Internet/login hết hạn không dừng core warning. Missing/stale/fault phải UNKNOWN/UNAVAILABLE,
+không SAFE. IMU không biết trước ý định rẽ. GPS còn phục vụ navigation, không lưu/đồng bộ
+hành trình trong MVP và không là tín hiệu chính kích hoạt cảnh báo đổi hướng.
 
-- Backend `com.rideguard`: `auth`, `users`, `devices`, `trips`, `feedback`, `shared`.
-  Chỉ `shared` có mã hiện tại. Controller/service/repository/DTO/entity được tạo khi
-  thực sự cần; không dựng CRUD hay các lớp rỗng trước.
-- Android: `features/auth`, `devices`, `navigation`, `trips`, `settings`;
-  `shared/networking`, `ble`, `storage`, `models`, `ui`. Networking đã có cấu hình
-  môi trường; các adapter BLE/Room chưa triển khai. Navigation nền tảng có hai màn hình.
-- Admin: `features/auth`, `users`, `devices`, `feedback`; `shared/api.ts` và router/layout
-  hiện có. Không dựng trang quản lý giả hay lịch sử vị trí cá nhân.
-- Firmware: `drivers/radar` có giao diện và stub chọn khi build. `drivers/imu`,
-  `drivers/display`, `drivers/vibration` sẽ quản lý phần cứng; `tracking` quản lý mục tiêu,
-  `features` tính đặc trưng, `risk` đánh giá nguy cơ, `navigation` quản lý cue hết hạn,
-  `communication` BLE, `ui` HUD, `power` pin, `diagnostics` tình trạng và log.
-  Không tạo thư mục rỗng cho các phần chưa có mã.
+## Trách nhiệm theo đường dẫn thật
 
-## Ranh giới vật lý
+- apps/mobile: Kotlin/Compose user FE; future features auth/devices/navigation/settings/
+  feedback; shared networking/BLE/storage/models/UI tách adapter. Hiện có foundation
+  navigation và API URL; Room trip queue không thuộc MVP.
+- apps/admin-web: React/TypeScript admin FE; future auth/users/devices/feedback; backend
+  phải kiểm ADMIN, không chỉ ẩn nút. Không dashboard số liệu giả hoặc trang vị trí.
+- apps/backend: Spring Boot com.rideguard future auth/users/devices/feedback/shared;
+  devices gồm bindings/config/reports. Chỉ shared + health hiện có, không tạo lớp rỗng.
+- firmware: drivers/radar có chọn LD2451/LD2417 tại build, stubs NotImplemented. Planned
+  drivers/imu/display/vibration, tracking/features/risk/navigation/communication/ui/power/
+  diagnostics; không tạo thư mục rỗng hoặc kích GPIO chưa xác nhận.
+- ai: offline preprocessing/features/training/evaluation/export; baseline và ML nhẹ
+  dùng radar+IMU kết hợp theo thời gian/từng mục tiêu, không hai mô hình rời thiếu fusion.
+  Chưa train/độ chính xác/inference REST. Chi tiết [AI README](../../ai/README.md).
+- contracts: một OpenAPI implemented, một proposed, BLE riêng, JSON schemas. hardware
+  giữ quyết định phần cứng; infra chỉ local PostgreSQL; tools thu log/replay/BLE khi thật
+  sự triển khai; docs nguồn thiết kế và trạng thái, scripts kiểm hợp đồng offline.
 
-ESP32 NodeMCU-32S, TFT ST7789 240×240, motor qua driver. Chọn LD2451 hoặc LD2417
-khi build; IMU LSM6DS3/BMI160 chưa chốt. Pin tháo rời, sạc ngoài. Pin map, nguồn,
-dòng motor, chống nước và vị trí anten chưa xác nhận. Không mặc định radar xuyên được
-lớp phản xạ gương. ID mục tiêu radar có thể đổi; phải kiểm chứng bằng dữ liệu thật.
-Không đồng nhất khoảng cách trục Y của LD2417 với khoảng cách của LD2451.
+## Dữ liệu và ranh giới
 
-Không có OTA, thanh toán, chia sẻ thiết bị hoặc tải toàn bộ radar lên cloud trong MVP.
+MVP giữ tài khoản/session, USER/ADMIN, serial binding/history, config mỗi ownership,
+mobile status reports, feedback/admin. DB proposed 7 nghiệp vụ+3 kỹ thuật; V1 implemented
+chỉ schema. Config desired≠applied; ACK mobile không hardware proof. Reports không online
+realtime. Lịch sử liên kết vẫn MVP dù lịch sử hành trình deferred. Device registry status
+không là lệnh tắt ESP32. Không OTA/payment/sharing/possession challenge trong MVP.
 
-## Triển khai độc lập
+NodeMCU-32S, ST7789 240×240, motor qua driver, pin tháo rời sạc ngoài. Radar chỉ một driver
+mỗi build, IMU LSM6DS3/BMI160 chưa chốt, chưa pinout/nguồn/mount. Không đoán protocol,
+radar xuyên lớp phản xạ gương hoặc radar target ID ổn định. LD2417 axis Y không tự đồng
+nhất distance LD2451; missing fields null, giữ sensor/units/distance definition/clock.
 
-Firmware build thành binary; mobile thành APK; admin thành static `dist/`; backend
-thành executable JAR; AI thành Python wheel. Compose chỉ chạy PostgreSQL. Không có
-pipeline deploy tự động. Backend cần DB và môi trường riêng; admin cần cấu hình URL
-trước build và SPA rewrite về index.html trên host. Mobile không cần server để mở màn hình.
+Nguy cơ đổi hướng và bị áp sát phía sau khi đi thẳng là hai tình huống khác nhau; cần
+phê duyệt policy từng loại. Cùng phía mục tiêu/ego movement chưa đủ kết luận giao cắt.
+Không coi policy/ML/cảm biến đã triển khai. Artifacts từng thành phần độc lập; không
+thêm inference server hay deploy pipeline. Cập nhật tài liệu không yêu cầu bật stack.

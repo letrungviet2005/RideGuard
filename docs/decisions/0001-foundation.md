@@ -1,6 +1,7 @@
 # ADR 0001 — independent foundations in one repository
 
-Status: accepted for bootstrap, 2026-11-06.
+Status: accepted bootstrap, 2026-11-06; business scope/database portion superseded by
+[ADR0002](0002-mvp-scope.md). Local safety pipeline and independent builds remain accepted.
 
 Use one root Git repository, manifests and build outputs per component, no submodules,
 no shared node_modules or Python environment. Keep existing STL source assets untouched.
@@ -11,11 +12,13 @@ Safety pipeline resides on ESP32; offline/mobile/backend outages never imply saf
 conditions. Hardware stubs explicitly unavailable. AI is offline research until evidence,
 resource budget and rule-based baseline exist. Only health API implemented now.
 
-Business DB is a nine-table proposal; foundation migration creates schema only. Readiness
+The earlier nine-table/trip proposal is superseded: current MVP is seven business plus
+three technical proposed tables; trip design is deferred. Foundation migration creates schema only. Readiness
 includes database, liveness excludes it. All non-health backend requests denied until auth
 is deliberately implemented. No default account and no JWT scaffolding.
 
 Versions and primary compatibility sources: [toolchain.md](../development/toolchain.md).
 Unresolved: radar choice and exact serial protocol revision, IMU module, pin map/power,
 radar mounting/transmission through materials, risk thresholds, stable target tracking,
-BLE UUID/security/MTU, auth strategy, privacy retention, backend deployment URLs.
+BLE UUID/security/MTU, privacy retention, backend deployment origins. Auth now has a
+proposed client-specific transport design, not an implementation; see ADR0002.

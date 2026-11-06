@@ -6,8 +6,12 @@ privately through your team's existing channel. No fictional security address is
 
 Backend health exposes status/probe names only. Other routes deny access. Never put secrets
 in Vite variables or mobile BuildConfig. Use environment/secret manager for backend credentials.
-Trip ownership must be checked on every future route; ADMIN does not automatically grant
-location access. Serial-only device binding has known possession-proof limitations.
+Proposed MVP checks account/session revocation and ownership on every private route; ADMIN
+is enforced by backend on admin routes. No location/trip API is in MVP (deferred roadmap).
+Serial-only prototype binding does not prove possession; no BLE challenge system is added.
+Mobile body refresh and web HttpOnly/Secure cookie transports are separate; exact origins,
+SameSite and CSRF deployment settings must be approved before implementation. Proposed
+errors add request_id; existing implemented security/error code is unchanged.
 
 Rotate exposed credentials, revoke affected sessions, remove sensitive artifacts from
 distribution/history through a coordinated process, and document remediation privately.

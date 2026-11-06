@@ -1,9 +1,10 @@
 # Hardware decisions pending
 
-Existing user-provided STL files remain at repository root in
-`espejo-retrovisor-de-motocicleta-ustom-motorcycle-side-mirror-housing-mount/` (Left/Right).
-They were not moved, edited or claimed to fit the electronics. License/provenance and
-mechanical suitability must be confirmed before redistribution/fabrication.
+Status: **proposed hardware, unverified**. Current user-managed STL files are under
+`models/espejo-retrovisor-de-motocicleta-ustom-motorcycle-side-mirror-housing-mount/`
+(Left/Right), relative to repository root. The user's in-progress move from model/ to
+models/ is preserved; this documentation task does not move/edit those files or claim
+electronics fit. License/provenance and mechanical suitability still require confirmation.
 
 Target: NodeMCU-32S, one of HLK-LD2451/LD2417, LSM6DS3/BMI160 undecided, ST7789 240×240,
 motor through driver, removable externally charged battery. No verified pin map/schematic

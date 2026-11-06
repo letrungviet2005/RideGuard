@@ -17,6 +17,14 @@ USB serial startup log only; peripheral pins are unassigned and motor/radar/TFT 
 activated. Decoders explicitly return NotImplemented and reset output to unavailable/null;
 no fake SAFE or fabricated data. Radar metadata keeps sensor, unit-suffixed fields,
 distance definition, availability and monotonic receipt time. Target IDs are unverified hints.
+**Proposed MVP:** radar + IMU joint temporal processing per target, local HUD/rung; Internet,
+REST account expiry and server registry status must not disable core warnings. BLE carries
+navigation cue/distance/TTL, binding-scoped config/version, ACK and hardware status metadata,
+not trips or possession challenge. [BLE contract](../contracts/ble-protocol.md) is logical
+proposed v0.2, not implemented. Pending config is not applied; battery remains null until
+measurement hardware is verified. Vibration preference cannot suppress mandatory warnings.
+Direction-change versus straight-line rear-approach policies need approval; IMU cannot
+know turn intent and same-side motion alone is insufficient. See [AI design](../ai/README.md).
 See [architecture](../docs/architecture/system-overview.md) for planned modules (IMU/display/
 vibration/tracking/features/risk/navigation/communication/UI/power/diagnostics).
 

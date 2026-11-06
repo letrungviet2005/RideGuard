@@ -3,9 +3,11 @@
 Nền tảng monorepo cho gương chiếu hậu thông minh xe máy. Đây là bộ khung phát triển,
 không phải sản phẩm cảnh báo đã kiểm chứng an toàn hoặc đã thử phần cứng.
 
-Radar, đánh giá nguy cơ, HUD và rung chạy trên ESP32. Backend, Internet, tài khoản và
-GPS điện thoại không nằm trong đường xử lý cảnh báo. Dữ liệu thiếu/lỗi không là SAFE.
-Android phụ trách BLE/điều hướng và hành trình; backend lưu nghiệp vụ; web dành cho admin.
+Kiến trúc **proposed MVP** đặt radar + IMU, đánh giá nguy cơ, HUD và rung trên ESP32.
+Backend, Internet, tài khoản và GPS điện thoại không nằm trong đường xử lý cảnh báo.
+Dữ liệu thiếu/lỗi không là SAFE. Android phụ trách BLE/điều hướng, tài khoản, thiết bị,
+cấu hình và phản hồi; mobile/web chủ động gọi REST backend. GPS vẫn dùng cho điều hướng,
+nhưng ghi/lưu/đồng bộ lịch sử hành trình là **deferred**, ngoài MVP.
 Không có OTA, thanh toán, chia sẻ thiết bị hoặc tải toàn bộ radar lên cloud.
 
 ## Cấu trúc
@@ -19,16 +21,17 @@ RideGuard/
 ├── firmware/         # PlatformIO, chỉ một radar driver mỗi binary
 ├── ai/               # Python package, chia dữ liệu theo phiên
 ├── tools/            # Phạm vi công cụ thiết bị dự kiến
-├── contracts/        # OpenAPI duy nhất, BLE, JSON Schemas
+├── contracts/        # OpenAPI implemented/proposed tách riêng, BLE, JSON Schemas
 ├── hardware/         # Quyết định phần cứng chưa chốt
 ├── infra/            # PostgreSQL Compose, volume, healthcheck
 ├── docs/             # Kiến trúc, DB/ERD, API, flows, setup, verification, ADR
 ├── scripts/          # Kiểm tra hợp đồng và môi trường riêng
 ├── .github/          # CI theo thành phần, issue/PR templates
-└── espejo-retrovisor-.../ # Bốn STL gốc giữ nguyên, không chỉnh sửa
+└── models/           # STL do người dùng quản lý, không di chuyển trong đợt tài liệu
 ```
 
-Chỉ một Git repository gốc, nhánh main; không remote, không submodule, chưa commit/push/deploy.
+Chỉ một Git repository gốc, không submodule. Repository đã có commit/remote do người dùng
+thiết lập; đợt cập nhật tài liệu MVP này không commit/push/deploy hoặc thay cấu hình Git.
 Không tạo thư mục rỗng cho nghiệp vụ chưa có mã. Trách nhiệm từng feature/module nằm ở
 [system overview](docs/architecture/system-overview.md).
 
@@ -40,8 +43,16 @@ Không tạo thư mục rỗng cho nghiệp vụ chưa có mã. Trách nhiệm t
   navigation và cấu hình môi trường. Không có dữ liệu hay kết nối thiết bị giả.
 - **Implemented:** firmware startup log, chọn decoder khi build, dữ liệu optional/unavailable;
   Python package/chia phiên/tests; hợp đồng, CI và tài liệu nhóm.
-- **Planned:** auth/users/devices/trips/feedback, Room/sync/BLE, cảm biến/HUD/rung/tracking/risk,
-  feature extraction/training/evaluation/export. Chín bảng DB chỉ là thiết kế.
+- **Proposed MVP:** auth/users/devices/binding history/config/reports/feedback/admin, BLE,
+  navigation, radar + IMU/HUD/rung/tracking/risk và nghiên cứu ML nhẹ. Database có bảy bảng
+  nghiệp vụ cộng ba bảng kỹ thuật, tất cả mới là thiết kế.
+- **Deferred:** hành trình/GPS recording, Room trip queue, BLE possession proof, OTA,
+  payment/sharing. [Roadmap](docs/roadmap.md) phân biệt rõ với GPS navigation và lịch sử binding.
+
+Dev bắt đầu ở [API MVP giải thích](docs/api/proposed-api.md) và
+[OpenAPI proposed](contracts/openapi.proposed.yaml). [OpenAPI implemented](contracts/openapi.yaml)
+chỉ health; không xem proposed là API đang chạy. Màn hình mobile foundation còn copy nhắc
+hành trình của thiết kế cũ; chưa sửa source UI trong nhiệm vụ tài liệu này.
 
 Mỗi thành phần có README riêng và build độc lập: [backend](apps/backend/README.md),
 [admin](apps/admin-web/README.md), [mobile](apps/mobile/README.md),
@@ -93,13 +104,14 @@ Chi tiết PowerShell, biến môi trường, hostname, contracts check và xử
 
 Không có kiểm thử trên ESP32/cảm biến/motor/TFT; không giả định radar xuyên lớp phản xạ
 gương hoặc ID radar ổn định. Chưa chốt radar, IMU, pin map, nguồn, giao thức BLE/security,
-auth/session và retention. Không có tài khoản mặc định; API nghiệp vụ bị chặn. Vite URL
-là cấu hình công khai trong bundle, không chứa secret. Lịch sử hành trình riêng tư,
-không mặc định cho admin. Không commit dữ liệu lớn, GPS cá nhân hay log nhạy cảm.
+deployment origins/CSRF, provisioning và retention. Token transport đã có đề xuất riêng
+cho mobile/web nhưng chưa triển khai. Không có tài khoản mặc định; API nghiệp vụ bị chặn.
+Vite URL là cấu hình công khai trong bundle, không chứa secret. Không có API vị trí/hành
+trình trong MVP. Không commit dữ liệu lớn, GPS cá nhân hay log nhạy cảm.
 
 Ưu tiên chốt phần cứng và tài liệu protocol, thu một phiên dữ liệu có provenance rồi
 triển khai decoder + fixture tests và baseline risk xử lý UNKNOWN rõ ràng. Nhánh ứng dụng
-có thể tiếp tục auth và ownership bằng migration theo thiết kế đã review, sau đó BLE/Room
-và sync idempotent. Xem [CONTRIBUTING](CONTRIBUTING.md), [SECURITY](SECURITY.md),
-[ADR](docs/decisions/0001-foundation.md).
-# RideGuard
+có thể tiếp tục auth và ownership bằng migration theo thiết kế đã review, sau đó BLE,
+configuration ACK/status reports và feedback. Kiểm tra tài liệu chỉ cần môi trường scripts
+sẵn có, không chạy các lệnh bật stack bên trên. Xem [CONTRIBUTING](CONTRIBUTING.md),
+[SECURITY](SECURITY.md), [ADR MVP](docs/decisions/0002-mvp-scope.md).

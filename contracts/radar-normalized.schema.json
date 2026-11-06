@@ -137,5 +137,6 @@
         }
       }
     }
-  ]
+  ],
+  "description": "Proposed normalized measurement contract; driver stubs do not serialize real measurements. Missing fields stay null, target IDs unverified. Fusion with IMU requires explicit clock/axis alignment; axis Y is not automatically radial distance. No raw-radar REST endpoint in MVP."
 }

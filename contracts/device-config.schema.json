@@ -1,47 +1,71 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "device-config",
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "schema_version",
-    "binding_id",
-    "desired_version",
-    "reported_applied_version",
-    "settings"
-  ],
   "properties": {
-    "schema_version": {
-      "const": 1
-    },
     "binding_id": {
       "type": "string",
-      "format": "uuid"
+      "format": "uuid",
+      "readOnly": true
+    },
+    "schema_version": {
+      "type": "integer",
+      "const": 1,
+      "readOnly": true
     },
     "desired_version": {
       "type": "integer",
-      "minimum": 1
+      "minimum": 1,
+      "maximum": 9007199254740991,
+      "readOnly": true
     },
     "reported_applied_version": {
       "type": [
         "integer",
         "null"
       ],
-      "minimum": 1
+      "minimum": 1,
+      "maximum": 9007199254740991,
+      "readOnly": true
     },
     "settings": {
       "type": "object",
       "additionalProperties": false,
-      "properties": {}
+      "properties": {
+        "display_brightness": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "vibration_enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "display_brightness",
+        "vibration_enabled"
+      ]
     }
   },
+  "required": [
+    "binding_id",
+    "schema_version",
+    "desired_version",
+    "reported_applied_version",
+    "settings"
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Device configuration v1 — proposed",
+  "description": "Proposed MVP snapshot. Applied version must reference an issued version on this binding and never exceed desired_version (service/DB invariant). Vibration preference cannot disable core safety warnings; firmware precedence needs approval.",
   "examples": [
     {
+      "binding_id": "00000000-0000-4000-8000-000000000003",
       "schema_version": 1,
-      "binding_id": "00000000-0000-4000-8000-000000000002",
-      "desired_version": 1,
-      "reported_applied_version": null,
-      "settings": {}
+      "desired_version": 2,
+      "reported_applied_version": 1,
+      "settings": {
+        "display_brightness": 70,
+        "vibration_enabled": true
+      }
     }
   ]
 }

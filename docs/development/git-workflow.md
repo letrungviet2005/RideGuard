@@ -1,7 +1,8 @@
 # Git workflow
 
-Only repository root has `.git`; no submodules/nested repos. Bootstrap initializes `main`
-without commits/remotes. Create task branches: `git switch -c feat/<short-name>`.
+Only repository root has `.git`; no submodules/nested repos. Bootstrap originally initialized
+main; the user has since committed the foundation and configured origin. Preserve existing
+history/remotes and unrelated working-tree changes. Create task branches: `git switch -c feat/<short-name>`.
 Review `git status` and `git diff` before staging; add explicit intended paths. Keep STL
 assets intact. Never add `.env`, `.local`, `.venv`, build output or personal logs.
 

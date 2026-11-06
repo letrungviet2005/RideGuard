@@ -1,23 +1,54 @@
-# BLE protocol — proposed v0.1, not implemented
+# BLE protocol — proposed logical v0.2, not implemented
 
-This is a design contract, not an available GATT service. UUIDs, authentication,
-MTU, payload limits, byte order and retry timers must be ratified before implementation.
-BLE is separate from REST. Internet/account state never gates radar, HUD or vibration.
+No active GATT service. Keep this contract separate from REST. UUIDs, pairing/link security,
+MTU, byte order, framing and bounded payload/retry limits need approval before firmware
+writes. No ownership challenge/proof, OTA, trip history or raw cloud stream in MVP. BLE
+pairing/link security is distinct from deferred backend possession proof. Internet/login
+state never gates ESP32 radar + IMU → risk → HUD/vibration.
 
-Planned logical messages: capabilities/version handshake, navigation cue with expiry,
-configuration request, applied/rejected acknowledgement, sensor diagnostics.
-No raw radar cloud stream and no OTA. Navigation must expire to unavailable if the phone
-disconnects. A stale cue must not imply that the road is safe.
+## Logical messages
 
-Configuration envelope: protocol_version, schema_version, binding-scoped config ID,
-desired_version, command_id, payload. ESP32 validates all fields and compatibility,
-then acknowledges command_id and reported_applied_version only after actual application.
-Duplicate command IDs replay the acknowledgement; rejected/unsupported commands do not
-advance the applied version. Mobile records acknowledgement before reporting to REST.
-Reconnection reads applied version and retries bounded, idempotent commands.
-Transfers must be bounded, framed, length-checked and reassembled with timeout; no
-assumption that a JSON message fits one BLE packet. Pairing/security remains a blocking
-design decision before accepting configuration writes on hardware.
+Every envelope has protocol_version="0.2", message_id (UUID) and type. Wire encoding is
+not finalized; JSON here is a logical model, not a claim that an envelope fits one packet.
+Handshake exchanges compatible versions/capabilities and boot_id; unsupported versions
+reject explicitly without applying partial settings. Receive/reassemble length limits and
+timeouts are mandatory when implemented.
 
-Measure round-trip latency on a single monotonic clock. Never subtract phone/server/ESP32
-timestamps unless clock synchronization and uncertainty are explicitly accounted for.
+- Mobile → ESP32 navigation: cue (enum to approve), distance_m nullable nonnegative,
+  ttl_ms positive bounded (maximum to approve), navigation_sequence and navigation_session_id.
+  No GPS coordinate/history payload. TTL starts on ESP32 monotonic receipt; expired/disconnected
+  navigation becomes unavailable, never SAFE. Sender must discard stale queued cues before send;
+  local receive TTL alone cannot detect time already spent in the phone queue. Deduplicate/reject
+  out-of-order sequence within session; new navigation session after reconnect.
+- Mobile → ESP32 configuration: command_id, binding_id, schema_version=1, desired_version,
+  full settings from [config schema](device-config.schema.json). Same binding/version with
+  different settings rejected; wrong binding/version cannot be silently accepted. Persisted
+  binding-context reset on rebind and pairing authorization require approval; they are not
+  cryptographic proof of ownership in this MVP.
+- ESP32 → mobile config ACK: command_id, binding_id, reported_applied_version only after real
+  apply. A rejection has an explicit reason/status and does not advance applied. Duplicate
+  command returns prior result; old ACK cannot lower applied. Reconnect queries binding/applied
+  before retry. Mobile REST ACK carries binding_id/reported_applied_version; server confirms
+  issued version, but this remains a mobile assertion, not hardware attestation.
+- ESP32 → mobile diagnostics: firmware_version nullable, radar/imu/display/vibration status
+  OK/ERROR/UNAVAILABLE/UNKNOWN, battery_percent integer 0–100 or null. Do not infer OK from BLE
+  connected; unknown/unavailable/fault/stale internal radar samples do not map to OK. The
+  normalized radar schema uses lower-case sample-quality states, distinct from report status.
+- Optional ESP32 → mobile risk display: risk_state including UNKNOWN, scenario type and
+  local observation age. Warning types/thresholds are not approved; app display cannot
+  replace local HUD/rung or declare a missing signal SAFE.
+
+Settings display_brightness 0–100/vibration_enabled are logical preferences, no guessed GPIO
+or PWM. Vibration flag must not suppress mandatory core warnings; priority and low-brightness
+policy require approval. Mobile cannot edit config offline; save backend first, BLE apply,
+then REST ACK. No BLE → pending, not applied. See [flow](../docs/flows/configuration-sync.md).
+
+## Clock ownership
+
+ESP32 samples use boot_id + ESP32 monotonic_ms (wrap/reset handled explicitly); mobile queues
+and RTT use phone monotonic clock. Navigation ttl_ms is a duration, not an absolute UTC
+deadline. Diagnostics may include ESP32 age_ms/boot_id; mobile creates observed_at in its UTC
+clock only for a fresh observation, never relabels stale cached telemetry. Server sets
+received_at. Timestamp tolerance/order is [documented separately](../docs/flows/device-status-reporting.md).
+Never subtract timestamps from phone/ESP32/server without a synchronization/error model to
+claim latency. No radar pinout/protocol or ability to pass through mirror coating is assumed.

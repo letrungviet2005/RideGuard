@@ -1,5 +1,13 @@
 # Local setup
 
+Status: **implemented foundation runbook**; business MVP is **proposed** in
+[OpenAPI](../../contracts/openapi.proposed.yaml), trips are **deferred**. For documentation/
+contract-only checks use the existing scripts environment:
+`scripts/.venv/Scripts/python.exe scripts/check_contracts.py` (POSIX `.venv/bin/python`).
+No Docker, database, backend or credentials are needed for that command. If dependencies
+are absent, report the unavailable check; do not install system software/start the stack
+just to validate docs. The following runtime/install commands are for separate development work.
+
 Run from repository root unless indicated. Install versions in [toolchain.md](toolchain.md).
 Only root Git repository is used; dependency environments are separate. Do not run tools
 with system Java 25 for this Android Gradle version: select JDK 21.

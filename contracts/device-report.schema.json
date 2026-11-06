@@ -1,0 +1,93 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "binding_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "observed_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$",
+      "description": "RFC 3339 UTC, serialized with Z suffix."
+    },
+    "firmware_version": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "radar_status": {
+      "type": "string",
+      "enum": [
+        "OK",
+        "ERROR",
+        "UNAVAILABLE",
+        "UNKNOWN"
+      ]
+    },
+    "imu_status": {
+      "type": "string",
+      "enum": [
+        "OK",
+        "ERROR",
+        "UNAVAILABLE",
+        "UNKNOWN"
+      ]
+    },
+    "display_status": {
+      "type": "string",
+      "enum": [
+        "OK",
+        "ERROR",
+        "UNAVAILABLE",
+        "UNKNOWN"
+      ]
+    },
+    "vibration_status": {
+      "type": "string",
+      "enum": [
+        "OK",
+        "ERROR",
+        "UNAVAILABLE",
+        "UNKNOWN"
+      ]
+    },
+    "battery_percent": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 100
+    }
+  },
+  "required": [
+    "binding_id",
+    "observed_at",
+    "firmware_version",
+    "radar_status",
+    "imu_status",
+    "display_status",
+    "vibration_status",
+    "battery_percent"
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Device status report v1 — proposed",
+  "description": "REST v1 mobile report, not hardware attestation or real-time online status. All fields required; unavailable firmware/battery use null. Server receives within [received_at-24h, received_at+5min]; stale/equal observations do not replace newer ones. No radar/IMU samples or GPS.",
+  "examples": [
+    {
+      "binding_id": "00000000-0000-4000-8000-000000000003",
+      "observed_at": "2026-11-06T03:00:00Z",
+      "firmware_version": "0.1.0",
+      "radar_status": "OK",
+      "imu_status": "OK",
+      "display_status": "OK",
+      "vibration_status": "UNKNOWN",
+      "battery_percent": null
+    }
+  ]
+}

@@ -66,7 +66,8 @@
       ]
     },
     "contains_location": {
-      "type": "boolean"
+      "type": "boolean",
+      "description": "Provenance flag for externally collected research data; MVP collection must set false. This does not enable a backend GPS/trip feature; never commit private location data."
     },
     "distance_definition": {
       "enum": [
@@ -80,6 +81,35 @@
         "string",
         "null"
       ]
+    },
+    "imu_sensor": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "LSM6DS3",
+        "BMI160",
+        null
+      ],
+      "description": "Actual verified module when known, otherwise null. Optional for older collection manifests."
+    },
+    "imu_clock_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1,
+      "description": "Clock domain of IMU samples if known; not assumed to equal radar clock_id."
+    },
+    "clock_alignment": {
+      "type": "string",
+      "enum": [
+        "UNKNOWN",
+        "SAME_CLOCK",
+        "ALIGNED"
+      ],
+      "description": "UNKNOWN unless evidenced. ALIGNED requires separately recorded transform/error budget before features are usable."
     }
   },
   "examples": [
@@ -95,7 +125,10 @@
       "split": "unassigned",
       "contains_location": false,
       "distance_definition": "unspecified",
-      "label_protocol_version": null
+      "label_protocol_version": null,
+      "imu_sensor": null,
+      "imu_clock_id": null,
+      "clock_alignment": "UNKNOWN"
     }
   ],
   "allOf": [
@@ -115,5 +148,6 @@
         }
       }
     }
-  ]
+  ],
+  "description": "Proposed offline research collection provenance, not auth sessions or trip history. MVP collection does not record GPS routes. Optional IMU/clock metadata does not prove hardware presence or alignment; absent alignment is UNKNOWN."
 }

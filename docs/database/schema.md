@@ -1,117 +1,193 @@
-# Thiết kế database — PROPOSED
+# Database MVP — proposed, chưa có migration nghiệp vụ
 
-Chưa tạo entity/migration nghiệp vụ. Migration V1 chỉ tạo schema `rideguard`;
-Flyway lưu lịch sử ở `public.flyway_schema_history`. Các bảng nghiệp vụ tương lai
-đặt trong `rideguard`. UUID là khóa chính; thời gian dùng `timestamptz` UTC.
-Mọi cột dưới đây NOT NULL trừ khi ghi nullable. Không dùng 0 thay cho dữ liệu thiếu.
+Nguồn API: [OpenAPI proposed](../../contracts/openapi.proposed.yaml). Thiết kế gồm **7 bảng
+nghiệp vụ + 3 bảng kỹ thuật = 10 bảng**, không phải chỉ bảy bảng. Migration implemented V1
+chỉ tạo schema rideguard, Flyway history ở public. Không sửa/chạy migration trong cập nhật này.
+Không có trips, trip_points hoặc device_claim_requests trong schema MVP; xem [deferred](../roadmap.md).
 
-## 1. users
+Mọi cột bên dưới NOT NULL trừ khi ghi nullable; ID UUID, timestamp timestamptz (serialize
+RFC 3339 UTC Z). PK/unique tạo index tương ứng; FKs cần index truy vấn. Không dùng 0 thay null.
+Các CHECK/transaction sau là đề xuất cho migration tương lai, chưa được DB thực thi.
 
-`id uuid PK`, `email varchar(254)`, `password_hash text`, `role varchar(10)` default
-USER, `status varchar(10)` default ACTIVE, `created_at`, `updated_at timestamptz`.
-Unique index trên `lower(email)` sau chuẩn hóa; CHECK email không rỗng, role IN
-(USER, ADMIN), status IN (ACTIVE, LOCKED). Server gán USER khi đăng ký, không nhận role
-từ client. Password dùng adaptive hash (Argon2id với tham số đo trên server; không
-SHA256 thuần). Chính sách xóa tài khoản/anonymization cần chốt trước triển khai.
+## Bảng nghiệp vụ
 
-## 2. auth_sessions
+### 1. users
 
-`id uuid PK`, `user_id uuid FK users ON DELETE CASCADE`, `refresh_token_hash text UNIQUE`,
-`created_at`, `expires_at timestamptz`, `revoked_at timestamptz nullable`,
-`replaced_by_session_id uuid nullable FK auth_sessions ON DELETE SET NULL`.
-CHECK expires_at > created_at, revoked_at >= created_at nếu có, không tự thay thế chính nó.
-Index (user_id, expires_at), partial index user_id WHERE revoked_at IS NULL.
-Token ngẫu nhiên entropy cao, chỉ lưu digest/HMAC phù hợp; rotate atomically, phát hiện
-tái dùng và thu hồi token family theo chính sách auth. Trạng thái active/revoked/expired
-suy ra từ thời điểm, không lưu cờ mâu thuẫn.
+id UUID PK; email varchar(254); full_name varchar(100); password_hash text; role varchar(10)
+default USER; status varchar(10) default ACTIVE; created_at/updated_at timestamptz.
+Canonical email trim/lowercase toàn bộ (không provider dot/plus), unique email; CHECK email
+nonblank/max 254, full_name trim length 1–100, role USER/ADMIN, status ACTIVE/LOCKED,
+updated_at>=created_at. Index(status,created_at DESC,id DESC), role nếu filter thực tế cần.
+Search q tên/email case-insensitive; MVP bounded list có thể scan, chưa thêm extension
+index trước khi đo. Password 12–128 ký tự nguyên trạng, Argon2id adaptive hash; DB không lưu
+plaintext. Server gán USER; client không gán role; MVP không đổi email. Khóa user revoke
+sessions cùng transaction; nguồn auth phải phản ánh lock ngay. Xóa account/retention cần chốt;
+chưa cung cấp delete API, mặc định RESTRICT các nghiệp vụ cần lịch sử.
 
-## 3. password_reset_tokens
+### 2. auth_sessions
 
-`id uuid PK`, `user_id uuid FK users ON DELETE CASCADE`, `token_hash text UNIQUE`,
-`created_at`, `expires_at timestamptz`, `used_at timestamptz nullable`.
-CHECK expires_at > created_at, used_at >= created_at. Index (user_id, expires_at).
-Token entropy cao, digest/HMAC; chỉ sử dụng một lần trong transaction, phản hồi không
-tiết lộ email tồn tại, không ghi token vào log. Dọn token hết hạn theo retention.
+Mỗi row là một refresh generation, không phải một thiết bị/session mới hiển thị trên UI.
+id UUID PK; family_id UUID FK auth_sessions(id) ON DELETE RESTRICT DEFERRABLE INITIALLY
+DEFERRED; user_id UUID FK users RESTRICT; generation integer >=0; refresh_token_hash text
+UNIQUE; client_type varchar(16) mobile/admin_web; client_name varchar(100) nullable;
+created_at/last_seen_at/expires_at timestamptz; consumed_at/revoked_at timestamptz nullable;
+replaced_by_session_id UUID nullable FK auth_sessions RESTRICT.
 
-## 4. devices
+Root generation 0 có family_id=id, created_at là login time, expires_at<=created_at+30 ngày;
+các generation sau cùng user/family/client_type/absolute expiry. UNIQUE(family_id,generation),
+partial UNIQUE(family_id) WHERE consumed_at IS NULL AND revoked_at IS NULL cho live leaf.
+Index(user_id,family_id), (user_id,created_at DESC,id DESC), expires_at. CHECK expires_at>
+created_at, last_seen_at>=created_at, consumed/revoked>=created_at nếu có, replacement!=id.
+Service/constraint-trigger tương lai bảo đảm family root tồn tại/cùng user, generation tăng,
+không cycle replacement; CHECK đơn giản không kiểm cross-row được.
 
-`id uuid PK`, `serial varchar(128) UNIQUE`, `radar_model varchar(16) nullable`,
-`status varchar(16)` default ACTIVE, `created_at timestamptz`.
-CHECK serial trim không rỗng; serial chuẩn hóa có quy tắc duy nhất trước ghi;
-radar_model IN (LD2451, LD2417) nếu có; status IN (ACTIVE, DISABLED, RETIRED).
-Không tự thêm thiết bị chỉ vì client gửi serial lạ. Không xóa cứng thiết bị còn lịch sử binding.
+Refresh transaction khóa family/root, consume leaf rồi insert generation mới/link replacement.
+Giữ old hashes để phát hiện replay; rotate token cũ bị reuse → revoke mọi generation family.
+Hash cho opaque high-entropy token dùng digest/HMAC phù hợp, không lưu raw. Access sid=family_id;
+check root/user/active leaf mỗi request để revoke/lock có hiệu lực trước JWT expiry 15 phút.
+GET sessions trả id=family_id, created_at của root, last_seen_at của current leaf,
+expires_at tuyệt đối, client metadata, is_current từ access sid; không token/hash. Query
+dedup family; partial index tránh hai current leaves. Revoke và rotate dùng cùng lock order.
+Old generations giữ ít nhất hết lifetime family + cửa sổ vận hành đã duyệt; không xóa root
+trước descendants. Không dùng cookie/response snapshot lưu refresh plaintext trong DB.
 
-## 5. device_bindings
+### 3. password_reset_tokens
 
-`id uuid PK`, `device_id uuid FK devices ON DELETE RESTRICT`,
-`user_id uuid FK users ON DELETE RESTRICT`, `bound_at timestamptz`,
-`unbound_at timestamptz nullable`. CHECK unbound_at >= bound_at.
-UNIQUE partial index (device_id) WHERE unbound_at IS NULL đảm bảo một chủ đang hoạt động.
-Index (user_id, bound_at DESC, id), (device_id, bound_at DESC).
-Một user có nhiều binding; trạng thái active/unbound suy ra từ unbound_at.
-Bind phải transaction + khóa bản ghi device + unique constraint để chống race.
-Unbind chỉ đóng binding của user hiện tại. Không ghi đè chủ sở hữu.
-MVP serial không chứng minh sở hữu vật lý: có nguy cơ đoán/lộ serial, chiếm trước;
-rate-limit, audit, quy trình hỗ trợ tranh chấp; không có bảng device_claim_requests.
+id UUID PK; user_id UUID FK users RESTRICT; token_hash text UNIQUE; created_at/expires_at
+timestamptz; used_at nullable timestamptz. CHECK expires_at>created_at và <=created_at+15 phút,
+used_at>=created_at khi có; index(user_id,expires_at), expires_at. Token entropy cao, hash,
+consume once transaction + update password + revoke mọi family; không unlock user. Forgot
+API không tiết lộ tồn tại email. Issuing reset mới vô hiệu các unused reset cũ trong cùng
+transaction (consume/invalidate theo chính sách; used_at ghi thời điểm token không còn dùng).
 
-## 6. device_configs
+### 4. devices
 
-`id uuid PK`, `binding_id uuid UNIQUE FK device_bindings ON DELETE RESTRICT`,
-`schema_version integer`, `desired_version bigint`, `reported_applied_version bigint nullable`,
-`settings jsonb`, `updated_at timestamptz`, `reported_at timestamptz nullable`.
-CHECK schema_version > 0, desired_version >= 1; applied >= 1 AND applied <= desired
-nếu có; jsonb_typeof(settings) = 'object'; reported_at null iff applied null.
-Application validates [schema](../../contracts/device-config.schema.json), semantic
-compatibility and monotonic ACK for the same binding. Version grows atomically via
-optimistic concurrency. New owner gets a NEW config with no inherited settings/ACK.
-Saving desired is not proof that hardware applied it. Firmware settings remain empty
-until validated hardware parameters and limits are defined.
+id UUID PK; serial_number varchar(128) UNIQUE; model varchar(100); hardware_revision
+varchar(64) nullable; status varchar(16) default ACTIVE; created_at/updated_at timestamptz.
+CHECK serial canonical regex `^[A-Z 0-9][A-Z 0-9-]{0,127}$`, model trim length 1–100, revision
+trim length 1–64 nếu có; status ACTIVE/DISABLED/RETIRED, updated_at>=created_at. Index(status,
+created_at DESC,id DESC). Serial preregistered, không secret/proof. Không xóa device có binding.
+ACTIVE↔DISABLED, chuyển RETIRED terminal do service enforce dưới row lock; repeat status
+no-op, reversal conflict. Không chuyển owner, không lệnh tắt cảnh báo ESP32. DISABLED/RETIRED
+chặn bind và config edits, không xóa binding/history hoặc chặn unbind/report/issued ACK hợp lệ.
 
-## 7. feedbacks
+### 5. device_bindings
 
-`id uuid PK`, `user_id uuid FK users ON DELETE RESTRICT`,
-`binding_id uuid nullable FK device_bindings ON DELETE RESTRICT`, `body text`,
-`status varchar(16)` default OPEN, `created_at`, `updated_at timestamptz`.
-CHECK length(trim(body)) BETWEEN 1 AND 5000; status IN (OPEN, IN_REVIEW, RESOLVED, CLOSED).
-Index (user_id, created_at DESC, id), (status, created_at, id).
-Service verifies binding belongs to feedback author (FK alone cannot ensure this).
-Feedback never automatically attaches GPS or raw radar. Retention and deletion need policy.
+id UUID PK; device_id UUID FK devices RESTRICT; user_id UUID FK users RESTRICT;
+nickname varchar(60) nullable; bound_at timestamptz; unbound_at nullable timestamptz.
+CHECK unbound_at>=bound_at nếu có, nickname trim 1–60 hoặc null. Partial UNIQUE(device_id)
+WHERE unbound_at IS NULL; index(user_id,bound_at DESC,id DESC),(device_id,bound_at DESC,id DESC).
+UNIQUE(id,device_id,user_id) cho composite FK feedback. Status ACTIVE/UNBOUND derived,
+không lưu cờ gây mâu thuẫn. Nickname thuộc lần sở hữu, không devices; PATCH không đổi lịch sử
+owner. Bind/unbind và registry change serialize bằng device row; report/ACK khóa binding
+sau device khi cần, dùng một lock order thống nhất.
 
-## 8. trips
+Caller có nhiều binding/devices; chỉ một active owner/device. Active own bind 200 không đổi
+nickname; new 201; foreign 409; unavailable 404. Unbind ghi thời gian, không delete. Serial-only
+không proof vật lý. Stale unbind cùng user sau rebind là giới hạn route MVP, xem
+[flow](../flows/device-binding.md). Lịch sử liên kết giữ nguyên, không phải lịch sử hành trình.
 
-`id uuid PK` (mobile may generate offline), `user_id uuid FK users ON DELETE RESTRICT`,
-`device_id uuid nullable FK devices ON DELETE SET NULL`, `title varchar(160) nullable`,
-`status varchar(16)` default RECORDING, `started_at timestamptz`,
-`ended_at timestamptz nullable`, `distance_estimate_m double precision nullable`,
-`created_at`, `updated_at timestamptz`, `version bigint` default 1.
-CHECK status IN (RECORDING, COMPLETED, ABORTED), version >= 1; ended_at >= started_at;
-RECORDING requires ended_at null; terminal states require ended_at;
-distance finite and >= 0 if present. Index (user_id, started_at DESC, id), device_id.
-Owner immutable. Optional device association must be authorized at creation/sync;
-offline uploads after unbind require binding history matching user and recording time,
-not current ownership alone. Ambiguous cases reject device association or require user
-confirmation to upload without device. Trip remains owned by creator after unbinding.
-Distance is an estimate after accuracy/outlier/time-gap filtering; not raw GPS jitter sum.
+### 6. device_configs
 
-## 9. trip_points
+binding_id UUID PK/FK device_bindings RESTRICT; schema_version integer=1;
+desired_version bigint>=1; reported_applied_version bigint nullable>=1;
+settings jsonb; updated_at timestamptz; reported_at nullable timestamptz.
+Không cần config UUID riêng vì API nhận diện theo binding. Version<=9007199254740991 để
+JSON/JavaScript bảo toàn số; CHECK applied<=desired; reported_at null iff applied null.
+settings object exactly display_brightness integer 0–100, vibration_enabled boolean,
+không null/unknown keys; validate [schema](../../contracts/device-config.schema.json).
+Không risk thresholds/master-disable. Preference rung không vô hiệu core alerts; priority
+cần duyệt. New binding defaults proposed 70/true, desired 1/applied null.
 
-`trip_id uuid FK trips ON DELETE CASCADE`, `sequence_number bigint`,
-`recorded_at timestamptz`, `latitude double precision`, `longitude double precision`,
-`accuracy_m double precision`, `speed_mps double precision nullable`,
-`bearing_deg double precision nullable`. PK (trip_id, sequence_number) supplies UNIQUE
-(trip_id, sequence_number). CHECK sequence_number >= 0, latitude [-90,90], longitude
-[-180,180], accuracy_m >= 0, speed_mps >= 0 if present, bearing_deg [0,360) if present;
-all numbers must be finite (explicitly reject NaN/infinity at API and DB boundary).
-Index (trip_id, recorded_at, sequence_number) for ordered temporal reads.
-Identical retry is accepted, same sequence with different payload is 409; do not overwrite.
-Sequence may have gaps; loss is explicit. recorded_at order inconsistencies are flagged,
-not silently rewritten. Batch limits and ownership enforced before insert transaction.
+Composite FK(binding_id,desired_version) và (binding_id,reported_applied_version) →
+device_config_versions(binding_id,version), ON DELETE RESTRICT, DEFERRABLE INITIALLY DEFERRED;
+nullable applied sử dụng MATCH SIMPLE. FK chứng minh issued version cùng binding. Snapshot
+settings/schema phải bằng issued desired row: transaction service/constraint trigger, không
+claim FK tự kiểm JSON equality. CAS expected_version + merge + increment + insert issued
+snapshot atomic. ACK update max giữ monotonic; reported_at chỉ đổi khi applied tiến lên.
+Binding inactive không nhận edit/ACK; new owner không thấy config/ACK cũ.
 
-## Privacy and integrity
+### 7. feedbacks
 
-Every trip/point query is scoped to authenticated user, including UUID lookups, batch,
-rename, complete and delete. ADMIN is not an override to view personal locations.
-Deleting a trip cascades points; backups follow documented retention, not instant erasure.
-User account deletion and legal retention remain design decisions, not implemented actions.
-Index FKs used for joins/deletion; bounds and finite values must be covered by migration
-tests when these proposed tables are implemented. No business table exists yet.
+id UUID PK; user_id UUID FK users RESTRICT; device_id UUID nullable FK devices RESTRICT;
+binding_id UUID nullable FK device_bindings RESTRICT; category varchar(16); content text;
+status varchar(16) default OPEN; admin_response text nullable; responded_at timestamptz
+nullable; responded_by UUID nullable FK users RESTRICT; created_at/updated_at timestamptz.
+CHECK category BUG/SUGGESTION/OTHER; status OPEN/IN_PROGRESS/RESOLVED; trimmed content 1–5000,
+admin_response trim 1–5000 nếu có; response/time/responded_by cùng null hoặc cùng nonnull;
+responded_at>=created_at, updated_at>=created_at; device/binding cùng null hoặc cùng nonnull.
+Composite FK(binding_id,device_id,user_id)→device_bindings(id,device_id,user_id) RESTRICT
+(MATCH SIMPLE) bổ sung tính nhất quán tác giả/context. Service kiểm active ownership lúc tạo
+dưới lock; sau unbind user vẫn xem own feedback, không chuyển cho chủ mới. Admin có thể
+reply/reopen, không sửa user/device/content; updated/responded_at server sinh. Self DTO
+không trả user_id/binding_id/responded_by; admin DTO thêm user_id/binding_id nhưng không secret.
+Index(user_id,created_at DESC,id DESC),(status,created_at DESC,id DESC),(device_id), binding_id,
+responded_by; category composite index chỉ thêm nếu query cần. Không attachment/GPS/raw radar.
+
+## Bảng kỹ thuật
+
+### 8. idempotency_records
+
+id UUID PK; user_id UUID FK users RESTRICT; method varchar(8); route varchar(128);
+idempotency_key UUID; request_hash text; resource_type varchar(16); binding_id UUID nullable
+FK device_bindings RESTRICT; feedback_id UUID nullable FK feedbacks RESTRICT;
+response_status smallint nullable; response_body jsonb nullable; created_at timestamptz;
+completed_at/response_expires_at timestamptz nullable; state varchar(16).
+UNIQUE(user_id,method,route,idempotency_key); method=POST; route chỉ /api/v1/devices/bind hoặc
+/api/v1/feedbacks, resource_type BINDING/FEEDBACK tương ứng. state IN_PROGRESS/COMPLETED/
+EXPIRED; CHECK final state đúng một target FK phù hợp route/type, IN_PROGRESS có thể chưa
+có resource; completed_at>=created_at, expires=completed_at+7 ngày. response_status 200/201,
+response_body object khi COMPLETED; EXPIRED giữ key/hash/target nhưng body null. Index
+response_expires_at, binding_id, feedback_id. Không lưu credentials/token/body auth.
+
+Canonical JSON hash sau validate/normalize (password không liên quan hai endpoint này),
+unique scope bảo vệ concurrency. Reserve/write resource/result cùng transaction; lỗi
+rollback không để success giả. Nếu implement IN_PROGRESS visible cần lease/recovery
+và không cho double execution; baseline serialize DB transaction, lock contention có
+thể 409 IDEMPOTENCY_IN_PROGRESS. Replay kiểm account/quyền/resource state trước cached body,
+trả 200; key khác hash 409. Binding đóng ưu tiên 409 BINDING_NO_LONGER_ACTIVE.
+
+Full response retention 7 ngày. **Minimal tombstone còn trong đời binding/feedback** để
+key cũ không bị coi là thao tác mới sau cache expiry; hết cache 409 IDEMPOTENCY_KEY_EXPIRED,
+không recreate. Chính sách erase marker cùng account/resource cần duyệt. Không thể vừa
+xóa sạch key sau 7 ngày vừa hứa phát hiện mọi stale bind; thiết kế chọn giữ marker rõ ràng.
+
+### 9. device_reports
+
+id UUID PK; binding_id UUID FK device_bindings RESTRICT; observed_at/received_at timestamptz;
+firmware_version varchar(64) nullable; radar_status/imu_status/display_status/vibration_status
+varchar(16); battery_percent smallint nullable; accepted boolean. Status CHECK OK/ERROR/
+UNAVAILABLE/UNKNOWN; battery 0–100 hoặc null; firmware trim 1–64 hoặc null. CHECK observed_at
+BETWEEN received_at−24h AND received_at+5min (hằng số policy proposed). received_at do server,
+không caller. Partial UNIQUE(binding_id,observed_at) WHERE accepted; index(binding_id,
+observed_at DESC,id DESC) WHERE accepted, index(received_at), binding_id cho FK.
+
+Binding lock serialize report/unbind; accepted true chỉ khi observed_at mới hơn latest
+accepted của chính binding. Cross-row monotonic cần transaction, unique chỉ chống equal,
+không tự chặn stale. Valid stale/equal lưu accepted=false, response 200 cùng received_at
+của lần đó. GET own Device.latest_report chỉ latest accepted, không data binding cũ.
+Retention proposed 30 ngày, không realtime online hoặc hardware attestation. Không radar/
+IMU raw/GPS. Metadata firmware/pin unknown null. Index/retention cần đo tần suất trước launch.
+
+### 10. device_config_versions
+
+binding_id UUID FK device_bindings RESTRICT; version bigint; schema_version integer=1;
+settings jsonb; issued_at timestamptz; PK(binding_id,version). version 1..9007199254740991,
+settings full schema như device_configs. Rows immutable; new binding insert v1, mỗi CAS
+insert version tiếp theo trong transaction cùng snapshot. Giữ trong đời binding, không
+delete version đang FK tham chiếu. Issued history chứng minh ACK hợp lệ, không chứng minh
+phần cứng apply; reported ACK vẫn do mobile cung cấp.
+
+## Quyền, retention và ánh xạ API
+
+Self queries scope authenticated user, không nhận user_id. Config/report từ active binding;
+feedback từ author kể cả sau unbind; binding history chỉ các row caller. ADMIN enforced
+backend cho routes admin, không nâng quyền từ client; DTO không trả password_hash/token_hash/
+hardware secret. device_id là devices.id; binding_id là device_bindings.id; session_id là
+auth_sessions.family_id. User/status update có dữ liệu tương ứng; report receipt maps
+accepted/received_at; feedback response nullable thời điểm đúng admin_response.
+
+Retention token family, reset hash, config versions, binding history và minimal idempotency
+markers cần chính sách trước production; report 30 ngày/cache response 7 ngày là proposed.
+Không xóa account/device/binding tự động vì có lịch sử. Không migration/entity nghiệp vụ
+được tạo/chạy trong nhiệm vụ này. [ERD](erd.md) mô tả thiết kế, không deployed database.
