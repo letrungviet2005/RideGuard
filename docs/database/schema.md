@@ -1,13 +1,16 @@
-# Database MVP — proposed, chưa có migration nghiệp vụ
+# Database MVP — migration V2 có code, chưa chạy PostgreSQL integration
 
 Nguồn API: [OpenAPI proposed](../../contracts/openapi.proposed.yaml). Thiết kế gồm **7 bảng
-nghiệp vụ + 3 bảng kỹ thuật = 10 bảng**, không phải chỉ bảy bảng. Migration implemented V1
-chỉ tạo schema rideguard, Flyway history ở public. Không sửa/chạy migration trong cập nhật này.
+nghiệp vụ + 3 bảng kỹ thuật = 10 bảng**, không phải chỉ bảy bảng. V1 giữ nguyên checksum, chỉ tạo schema. V2__mvp.sql tạo10 bảng và function/trigger,
+SQL/JDBC chỉ rõ rideguard; giữ history mặc định hiện có (public với search path mặc định).
+Chưa chạy migration trên DB thật trong nhiệm vụ này. [Runbook](../backend/runbook.md).
 Không có trips, trip_points hoặc device_claim_requests trong schema MVP; xem [deferred](../roadmap.md).
 
 Mọi cột bên dưới NOT NULL trừ khi ghi nullable; ID UUID, timestamp timestamptz (serialize
 RFC 3339 UTC Z). PK/unique tạo index tương ứng; FKs cần index truy vấn. Không dùng 0 thay null.
-Các CHECK/transaction sau là đề xuất cho migration tương lai, chưa được DB thực thi.
+CHECK/index/FK được viết trong V2; transaction nằm trong services. Chưa có bằng chứng DB thực thi.
+Nguồn SQL chuẩn: apps/backend/src/main/resources/db/migration/V2__mvp.sql. Chi tiết dưới mô tả
+thiết kế và implementation; những policy vận hành chưa chốt được ghi riêng.
 
 ## Bảng nghiệp vụ
 
@@ -36,9 +39,9 @@ replaced_by_session_id UUID nullable FK auth_sessions RESTRICT.
 Root generation 0 có family_id=id, created_at là login time, expires_at<=created_at+30 ngày;
 các generation sau cùng user/family/client_type/absolute expiry. UNIQUE(family_id,generation),
 partial UNIQUE(family_id) WHERE consumed_at IS NULL AND revoked_at IS NULL cho live leaf.
-Index(user_id,family_id), (user_id,created_at DESC,id DESC), expires_at. CHECK expires_at>
+Index(user_id,created_at DESC,id DESC), expires_at; UNIQUE(family_id,generation) hỗ trợ tra family. CHECK expires_at>
 created_at, last_seen_at>=created_at, consumed/revoked>=created_at nếu có, replacement!=id.
-Service/constraint-trigger tương lai bảo đảm family root tồn tại/cùng user, generation tăng,
+Service hiện bảo đảm family root tồn tại/cùng user, generation tăng,
 không cycle replacement; CHECK đơn giản không kiểm cross-row được.
 
 Refresh transaction khóa family/root, consume leaf rồi insert generation mới/link replacement.
@@ -64,7 +67,7 @@ transaction (consume/invalidate theo chính sách; used_at ghi thời điểm to
 
 id UUID PK; serial_number varchar(128) UNIQUE; model varchar(100); hardware_revision
 varchar(64) nullable; status varchar(16) default ACTIVE; created_at/updated_at timestamptz.
-CHECK serial canonical regex `^[A-Z 0-9][A-Z 0-9-]{0,127}$`, model trim length 1–100, revision
+CHECK serial canonical regex `^[A-Z0-9][A-Z0-9-]{0,127}$`, model trim length 1–100, revision
 trim length 1–64 nếu có; status ACTIVE/DISABLED/RETIRED, updated_at>=created_at. Index(status,
 created_at DESC,id DESC). Serial preregistered, không secret/proof. Không xóa device có binding.
 ACTIVE↔DISABLED, chuyển RETIRED terminal do service enforce dưới row lock; repeat status
@@ -84,7 +87,7 @@ sau device khi cần, dùng một lock order thống nhất.
 
 Caller có nhiều binding/devices; chỉ một active owner/device. Active own bind 200 không đổi
 nickname; new 201; foreign 409; unavailable 404. Unbind ghi thời gian, không delete. Serial-only
-không proof vật lý. Stale unbind cùng user sau rebind là giới hạn route MVP, xem
+không proof vật lý. DELETE bắt buộc expected_binding_id, retry bản đã đóng không tác động lần mới, xem
 [flow](../flows/device-binding.md). Lịch sử liên kết giữ nguyên, không phải lịch sử hành trình.
 
 ### 6. device_configs
@@ -96,8 +99,7 @@ Không cần config UUID riêng vì API nhận diện theo binding. Version<=900
 JSON/JavaScript bảo toàn số; CHECK applied<=desired; reported_at null iff applied null.
 settings object exactly display_brightness integer 0–100, vibration_enabled boolean,
 không null/unknown keys; validate [schema](../../contracts/device-config.schema.json).
-Không risk thresholds/master-disable. Preference rung không vô hiệu core alerts; priority
-cần duyệt. New binding defaults proposed 70/true, desired 1/applied null.
+Không risk thresholds/master-disable. vibration_enabled=false tắt cơ cấu rung, HUD/risk vẫn hoạt động. New binding defaults 70/true, desired 1/applied null.
 
 Composite FK(binding_id,desired_version) và (binding_id,reported_applied_version) →
 device_config_versions(binding_id,version), ON DELETE RESTRICT, DEFERRABLE INITIALLY DEFERRED;
@@ -134,17 +136,15 @@ FK device_bindings RESTRICT; feedback_id UUID nullable FK feedbacks RESTRICT;
 response_status smallint nullable; response_body jsonb nullable; created_at timestamptz;
 completed_at/response_expires_at timestamptz nullable; state varchar(16).
 UNIQUE(user_id,method,route,idempotency_key); method=POST; route chỉ /api/v1/devices/bind hoặc
-/api/v1/feedbacks, resource_type BINDING/FEEDBACK tương ứng. state IN_PROGRESS/COMPLETED/
-EXPIRED; CHECK final state đúng một target FK phù hợp route/type, IN_PROGRESS có thể chưa
-có resource; completed_at>=created_at, expires=completed_at+7 ngày. response_status 200/201,
+/api/v1/feedbacks, resource_type BINDING/FEEDBACK tương ứng. state COMPLETED/EXPIRED; CHECK đúng một target FK phù hợp route/type; không lưu row IN_PROGRESS
+trong implementation: pg_try_advisory_xact_lock reserve scope và response chỉ insert khi hoàn tất; completed_at>=created_at, expires=completed_at+7 ngày. response_status 200/201,
 response_body object khi COMPLETED; EXPIRED giữ key/hash/target nhưng body null. Index
 response_expires_at, binding_id, feedback_id. Không lưu credentials/token/body auth.
 
 Canonical JSON hash sau validate/normalize (password không liên quan hai endpoint này),
 unique scope bảo vệ concurrency. Reserve/write resource/result cùng transaction; lỗi
-rollback không để success giả. Nếu implement IN_PROGRESS visible cần lease/recovery
-và không cho double execution; baseline serialize DB transaction, lock contention có
-thể 409 IDEMPOTENCY_IN_PROGRESS. Replay kiểm account/quyền/resource state trước cached body,
+rollback không để success giả. Implementation dùng transaction advisory lock, contention trả409 IDEMPOTENCY_IN_PROGRESS;
+không có lease hoặc row success giả sau rollback. Replay kiểm account/quyền/resource state trước cached body,
 trả 200; key khác hash 409. Binding đóng ưu tiên 409 BINDING_NO_LONGER_ACTIVE.
 
 Full response retention 7 ngày. **Minimal tombstone còn trong đời binding/feedback** để
@@ -158,7 +158,7 @@ id UUID PK; binding_id UUID FK device_bindings RESTRICT; observed_at/received_at
 firmware_version varchar(64) nullable; radar_status/imu_status/display_status/vibration_status
 varchar(16); battery_percent smallint nullable; accepted boolean. Status CHECK OK/ERROR/
 UNAVAILABLE/UNKNOWN; battery 0–100 hoặc null; firmware trim 1–64 hoặc null. CHECK observed_at
-BETWEEN received_at−24h AND received_at+5min (hằng số policy proposed). received_at do server,
+BETWEEN received_at−24h AND received_at+5min (hằng số policy trong V2). received_at do server,
 không caller. Partial UNIQUE(binding_id,observed_at) WHERE accepted; index(binding_id,
 observed_at DESC,id DESC) WHERE accepted, index(received_at), binding_id cho FK.
 
@@ -166,7 +166,7 @@ Binding lock serialize report/unbind; accepted true chỉ khi observed_at mới 
 accepted của chính binding. Cross-row monotonic cần transaction, unique chỉ chống equal,
 không tự chặn stale. Valid stale/equal lưu accepted=false, response 200 cùng received_at
 của lần đó. GET own Device.latest_report chỉ latest accepted, không data binding cũ.
-Retention proposed 30 ngày, không realtime online hoặc hardware attestation. Không radar/
+Retention mặc định30 ngày, cấu hình tối thiểu2 ngày, không realtime online hoặc hardware attestation. Không radar/
 IMU raw/GPS. Metadata firmware/pin unknown null. Index/retention cần đo tần suất trước launch.
 
 ### 10. device_config_versions
@@ -188,6 +188,8 @@ auth_sessions.family_id. User/status update có dữ liệu tương ứng; repor
 accepted/received_at; feedback response nullable thời điểm đúng admin_response.
 
 Retention token family, reset hash, config versions, binding history và minimal idempotency
-markers cần chính sách trước production; report 30 ngày/cache response 7 ngày là proposed.
-Không xóa account/device/binding tự động vì có lịch sử. Không migration/entity nghiệp vụ
-được tạo/chạy trong nhiệm vụ này. [ERD](erd.md) mô tả thiết kế, không deployed database.
+markers cần chính sách trước production; report30 ngày/cache response7 ngày đã có code cleanup; vận hành vẫn cần duyệt.
+Không xóa account/device/binding tự động vì có lịch sử. V2 migration đã viết, chưa chạy ở database thực tế. [ERD](erd.md) mô tả cấu trúc V2,
+không là bằng chứng deployed database. Cấm tự khóa/khóa admin ACTIVE cuối qua advisory lock.
+Config snapshot equality có deferred constraint trigger; issued version cấm UPDATE bằng trigger.
+Cross-row session family/generation và report ordering do service dưới row lock thực thi.

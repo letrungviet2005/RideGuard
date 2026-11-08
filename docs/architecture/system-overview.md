@@ -1,8 +1,8 @@
 # Kiến trúc RideGuard — implemented foundation / proposed MVP
 
-Monorepo và đường dẫn thực tế giữ nguyên. Implemented: health/security/error nền tảng,
-FE foundation, firmware startup/stubs, Python session split; không có nghiệp vụ hoặc ML
-đã chạy. [Implemented API](../../contracts/openapi.yaml),
+Monorepo và đường dẫn thực tế giữ nguyên. Backend MVP đã có code; unit/slice tests qua, PostgreSQL integration chưa chạy.
+FE foundation, firmware startup/stubs, Python session split giữ nguyên; chưa có ML/hardware
+đã kiểm chứng. Xem [hiện trạng BE](../backend/current-state.md). [Implemented API](../../contracts/openapi.yaml),
 [proposed MVP](../../contracts/openapi.proposed.yaml), [deferred](../roadmap.md).
 
 ```mermaid
@@ -31,8 +31,9 @@ hành trình trong MVP và không là tín hiệu chính kích hoạt cảnh bá
   navigation và API URL; Room trip queue không thuộc MVP.
 - apps/admin-web: React/TypeScript admin FE; future auth/users/devices/feedback; backend
   phải kiểm ADMIN, không chỉ ẩn nút. Không dashboard số liệu giả hoặc trang vị trí.
-- apps/backend: Spring Boot com.rideguard future auth/users/devices/feedback/shared;
-  devices gồm bindings/config/reports. Chỉ shared + health hiện có, không tạo lớp rỗng.
+- apps/backend: Spring Boot com.rideguard auth/users/devices/feedback/shared đã có code;
+  devices gồm bindings/config/reports. Controller/DTO/service/JDBC repository, V2 migration;
+  integration PostgreSQL chưa chạy.
 - firmware: drivers/radar có chọn LD2451/LD2417 tại build, stubs NotImplemented. Planned
   drivers/imu/display/vibration, tracking/features/risk/navigation/communication/ui/power/
   diagnostics; không tạo thư mục rỗng hoặc kích GPIO chưa xác nhận.
@@ -46,8 +47,7 @@ hành trình trong MVP và không là tín hiệu chính kích hoạt cảnh bá
 ## Dữ liệu và ranh giới
 
 MVP giữ tài khoản/session, USER/ADMIN, serial binding/history, config mỗi ownership,
-mobile status reports, feedback/admin. DB proposed 7 nghiệp vụ+3 kỹ thuật; V1 implemented
-chỉ schema. Config desired≠applied; ACK mobile không hardware proof. Reports không online
+mobile status reports, feedback/admin. DB có V2 cho7 nghiệp vụ+3 kỹ thuật, chưa chạy integration; V1 giữ nguyên chỉ schema. Config desired≠applied; ACK mobile không hardware proof. Reports không online
 realtime. Lịch sử liên kết vẫn MVP dù lịch sử hành trình deferred. Device registry status
 không là lệnh tắt ESP32. Không OTA/payment/sharing/possession challenge trong MVP.
 

@@ -1,58 +1,3733 @@
 openapi: 3.1.0
+jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 info:
   title: RideGuard implemented HTTP API
-  version: 0.1.0
-  description: Only health probes are implemented. Proposed business API is in ../docs/api/proposed-api.md.
+  version: 0.4.0
+  description: 3 health và 31 API MVP có code và bằng chứng PostgreSQL integration/local runtime smoke ngày 2026-11-09.
+    x-runtime-tested-statuses chỉ liệt kê status đã thử; không xác nhận mọi nhánh, browser HTTPS, email ngoài hoặc
+    phần cứng.
+servers:
+- url: /
+  description: Relative host only; no deployed business API or production origin is claimed. Paths include /api/v1.
+security:
+- bearerAuth: []
+tags:
+- name: auth
+  description: MVP implemented auth
+- name: users
+  description: MVP implemented users
+- name: devices
+  description: MVP implemented devices
+- name: configuration
+  description: MVP implemented configuration
+- name: reports
+  description: MVP implemented reports
+- name: feedback
+  description: MVP implemented feedback
+- name: admin
+  description: MVP implemented admin
 paths:
+  /api/v1/auth/register:
+    post:
+      operationId: register
+      tags:
+      - auth
+      summary: Register USER account
+      description: 'Server assigns USER/ACTIVE. Duplicate normalized email: 409 EMAIL_UNAVAILABLE. Does not log
+        in; call login. No default admin account.'
+      x-status: integration-and-runtime-smoke-tested
+      responses:
+        '201':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+              example:
+                id: 00000000-0000-4000-8000-000000000001
+                email: viet@example.invalid
+                full_name: Việt
+                role: USER
+                status: ACTIVE
+                created_at: '2026-11-06T03:00:00Z'
+                updated_at: '2026-11-06T03:00:00Z'
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
+        '400':
+          $ref: '#/components/responses/Error400'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '413':
+          $ref: '#/components/responses/Error413'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      security: []
+      requestBody:
+        required: true
+        description: JSON UTF-8, max 32 KiB decoded body. Normalize documented strings then validate; passwords
+          are not normalized. Unknown properties rejected.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            example:
+              email: viet@example.invalid
+              full_name: Việt
+              password: Example-only-password-2026
+        x-max-decoded-bytes: 32768
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 201
+  /api/v1/auth/login:
+    post:
+      operationId: login
+      tags:
+      - auth
+      summary: Log in using client-specific token transport
+      description: 'Access TTL 900s; session absolute lifetime <=30 days. admin_web requires ADMIN and trusted Origin/CSRF
+        header; creates HttpOnly Secure refresh cookie, never body refresh token. Bad credentials/locked user: generic
+        401.'
+      x-status: integration-and-runtime-smoke-tested
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+              examples:
+                mobile:
+                  value:
+                    access_token: synthetic.access.token.not-valid
+                    refresh_token: synthetic-refresh-token-not-a-real-secret
+                    token_type: Bearer
+                    expires_in: 900
+                    user:
+                      id: 00000000-0000-4000-8000-000000000001
+                      email: viet@example.invalid
+                      full_name: Việt
+                      role: USER
+                      status: ACTIVE
+                      created_at: '2026-11-06T03:00:00Z'
+                      updated_at: '2026-11-06T03:00:00Z'
+                admin_web:
+                  value:
+                    access_token: synthetic.access.token.not-valid
+                    token_type: Bearer
+                    expires_in: 900
+                    user:
+                      id: 00000000-0000-4000-8000-000000000001
+                      email: viet@example.invalid
+                      full_name: Việt
+                      role: ADMIN
+                      status: ACTIVE
+                      created_at: '2026-11-06T03:00:00Z'
+                      updated_at: '2026-11-06T03:00:00Z'
+          headers:
+            Set-Cookie:
+              description: 'Only admin_web: rg_refresh=<opaque>; HttpOnly; Secure; Path=/api/v1/auth; SameSite=Lax
+                for proposed same-site deployment. Cross-site topology needs explicit None + Secure, strict Origin/CORS/CSRF
+                review. Not configured today.'
+              schema:
+                type: string
+              example: rg_refresh=synthetic-cookie-value; HttpOnly; Secure; Path=/api/v1/auth; SameSite=Lax
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+              example: no-store
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '413':
+          $ref: '#/components/responses/Error413'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      security: []
+      parameters:
+      - $ref: '#/components/parameters/ClientType'
+      - $ref: '#/components/parameters/CsrfProtection'
+      requestBody:
+        required: true
+        description: JSON UTF-8, max 32 KiB decoded body. Normalize documented strings then validate; passwords
+          are not normalized. Unknown properties rejected.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: viet@example.invalid
+              password: Example-only-password-2026
+              client_name: Android phone
+        x-max-decoded-bytes: 32768
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
+      - 403
+  /api/v1/auth/refresh:
+    post:
+      operationId: refresh
+      tags:
+      - auth
+      summary: Rotate refresh token
+      description: Body-auth mobile or cookie-auth admin_web, never anonymous. Atomic single-use rotation within
+        original absolute expiry (not sliding). Replay revokes entire family. Check account/session on every use;
+        web branch requires ADMIN.
+      x-status: integration-and-runtime-smoke-tested
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+              examples:
+                mobile:
+                  value:
+                    access_token: synthetic.access.token.not-valid
+                    refresh_token: synthetic-refresh-token-not-a-real-secret
+                    token_type: Bearer
+                    expires_in: 900
+                    user:
+                      id: 00000000-0000-4000-8000-000000000001
+                      email: viet@example.invalid
+                      full_name: Việt
+                      role: USER
+                      status: ACTIVE
+                      created_at: '2026-11-06T03:00:00Z'
+                      updated_at: '2026-11-06T03:00:00Z'
+                admin_web:
+                  value:
+                    access_token: synthetic.access.token.not-valid
+                    token_type: Bearer
+                    expires_in: 900
+                    user:
+                      id: 00000000-0000-4000-8000-000000000001
+                      email: viet@example.invalid
+                      full_name: Việt
+                      role: ADMIN
+                      status: ACTIVE
+                      created_at: '2026-11-06T03:00:00Z'
+                      updated_at: '2026-11-06T03:00:00Z'
+          headers:
+            Set-Cookie:
+              description: 'Only admin_web: rg_refresh=<opaque>; HttpOnly; Secure; Path=/api/v1/auth; SameSite=Lax
+                for proposed same-site deployment. Cross-site topology needs explicit None + Secure, strict Origin/CORS/CSRF
+                review. Not configured today.'
+              schema:
+                type: string
+              example: rg_refresh=synthetic-cookie-value; HttpOnly; Secure; Path=/api/v1/auth; SameSite=Lax
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+              example: no-store
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '413':
+          $ref: '#/components/responses/Error413'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      security:
+      - {}
+      - refreshCookie: []
+        csrfProtection: []
+      x-authentication-required: true
+      x-token-transport:
+        mobile: Mandatory refresh_token body; cookies ignored; empty security alternative means body auth, NOT anonymous
+          access.
+        admin_web: 'Mandatory refresh cookie AND X-CSRF-Protection: 1 AND trusted Origin; body must be {}.'
+      parameters:
+      - $ref: '#/components/parameters/ClientType'
+      - $ref: '#/components/parameters/CsrfProtection'
+      requestBody:
+        required: true
+        description: JSON UTF-8, max 32 KiB decoded body. Normalize documented strings then validate; passwords
+          are not normalized. Unknown properties rejected.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+            examples:
+              mobile:
+                value:
+                  refresh_token: synthetic-refresh-token-not-a-real-secret
+              admin_web:
+                value: {}
+        x-max-decoded-bytes: 32768
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
+      - 400
+      - 401
+      - 403
+  /api/v1/auth/logout:
+    post:
+      operationId: logout
+      tags:
+      - auth
+      summary: Revoke current session family
+      description: Revoke family identified by body/cookie credential; clear cookie for web. Repeated logout with
+        same identifiable retired credential returns 204 within retention; unknown credential 401. Does not require
+        an unexpired access token.
+      x-status: integration-and-runtime-smoke-tested
+      responses:
+        '204':
+          description: Success
+          headers:
+            Set-Cookie:
+              description: Clear web refresh cookie with matching Path/domain policy.
+              schema:
+                type: string
+              example: rg_refresh=; Max-Age=0; HttpOnly; Secure; Path=/api/v1/auth; SameSite=Lax
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '413':
+          $ref: '#/components/responses/Error413'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      security:
+      - {}
+      - refreshCookie: []
+        csrfProtection: []
+      x-authentication-required: true
+      x-token-transport:
+        mobile: Mandatory refresh_token body; cookies ignored; empty security alternative means body auth, NOT anonymous
+          access.
+        admin_web: 'Mandatory refresh cookie AND X-CSRF-Protection: 1 AND trusted Origin; body must be {}.'
+      parameters:
+      - $ref: '#/components/parameters/ClientType'
+      - $ref: '#/components/parameters/CsrfProtection'
+      requestBody:
+        required: true
+        description: JSON UTF-8, max 32 KiB decoded body. Normalize documented strings then validate; passwords
+          are not normalized. Unknown properties rejected.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+            examples:
+              mobile:
+                value:
+                  refresh_token: synthetic-refresh-token-not-a-real-secret
+              admin_web:
+                value: {}
+        x-max-decoded-bytes: 32768
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 204
+  /api/v1/auth/forgot-password:
+    post:
+      operationId: forgotPassword
+      tags:
+      - auth
+      summary: Request password reset without account disclosure
+      description: 'Đã có code; chưa kiểm chứng SMTP thật. 202/body chung cho email hợp lệ: đưa tác vụ vào queue
+        bounded trong process trước khi lookup account. SMTP adapter gửi reset code trong email, không API/log.
+        Queue đầy: 503 cho mọi email; worker lỗi rollback token mới và log thông báo chung. Queue không bền qua
+        crash; người dùng có thể yêu cầu lại.'
+      x-status: integration-and-runtime-smoke-tested
+      responses:
+        '202':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+              example:
+                message: Nếu tài khoản phù hợp tồn tại, hướng dẫn khôi phục sẽ được gửi.
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
+        '400':
+          $ref: '#/components/responses/Error400'
+        '413':
+          $ref: '#/components/responses/Error413'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      security: []
+      requestBody:
+        required: true
+        description: JSON UTF-8, max 32 KiB decoded body. Normalize documented strings then validate; passwords
+          are not normalized. Unknown properties rejected.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordRequest'
+            example:
+              email: viet@example.invalid
+        x-max-decoded-bytes: 32768
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 202
+  /api/v1/auth/reset-password:
+    post:
+      operationId: resetPassword
+      tags:
+      - auth
+      summary: Consume reset token and revoke all sessions
+      description: 'One-use hashed token, 15min expiry. Invalid/expired/used token: 400 INVALID_RESET_TOKEN. Atomic
+        password update and revoke all families; reset does not unlock a locked account.'
+      x-status: integration-and-runtime-smoke-tested
+      responses:
+        '204':
+          description: Success
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
+        '400':
+          $ref: '#/components/responses/Error400'
+        '413':
+          $ref: '#/components/responses/Error413'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      security: []
+      requestBody:
+        required: true
+        description: JSON UTF-8, max 32 KiB decoded body. Normalize documented strings then validate; passwords
+          are not normalized. Unknown properties rejected.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+            example:
+              reset_token: synthetic-reset-token-not-a-real-secret
+              new_password: Example-only-new-password-2026
+        x-max-decoded-bytes: 32768
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 204
+      - 400
+  /api/v1/users/me:
+    get:
+      operationId: getProfile
+      tags:
+      - users
+      summary: Read own profile
+      description: ''
+      x-status: integration-and-runtime-smoke-tested
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+              example:
+                id: 00000000-0000-4000-8000-000000000001
+                email: viet@example.invalid
+                full_name: Việt
+                role: USER
+                status: ACTIVE
+                created_at: '2026-11-06T03:00:00Z'
+                updated_at: '2026-11-06T03:00:00Z'
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
+      - 401
+    patch:
+      operationId: updateProfile
+      tags:
+      - users
+      summary: Update own full name only
+      description: Email, user_id, role and status are forbidden request properties.
+      x-status: integration-and-runtime-smoke-tested
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+              example:
+                id: 00000000-0000-4000-8000-000000000001
+                email: viet@example.invalid
+                full_name: Việt
+                role: USER
+                status: ACTIVE
+                created_at: '2026-11-06T03:00:00Z'
+                updated_at: '2026-11-06T03:00:00Z'
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '413':
+          $ref: '#/components/responses/Error413'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      requestBody:
+        required: true
+        description: JSON UTF-8, max 32 KiB decoded body. Normalize documented strings then validate; passwords
+          are not normalized. Unknown properties rejected.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileRequest'
+            example:
+              full_name: Việt
+        x-max-decoded-bytes: 32768
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
+  /api/v1/users/me/change-password:
+    post:
+      operationId: changePassword
+      tags:
+      - users
+      summary: Change password and revoke other sessions
+      description: 'Wrong current_password: 400 CURRENT_PASSWORD_INVALID. Revoke all other session families; current
+        family remains within original expiry.'
+      x-status: integration-and-runtime-smoke-tested
+      responses:
+        '204':
+          description: Success
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '413':
+          $ref: '#/components/responses/Error413'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      requestBody:
+        required: true
+        description: JSON UTF-8, max 32 KiB decoded body. Normalize documented strings then validate; passwords
+          are not normalized. Unknown properties rejected.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+            example:
+              current_password: Example-only-password-2026
+              new_password: Example-only-new-password-2026
+        x-max-decoded-bytes: 32768
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 204
+  /api/v1/users/me/sessions:
+    get:
+      operationId: listSessions
+      tags:
+      - users
+      summary: List own active logical sessions without tokens
+      description: Sort (created_at DESC, family_id DESC); rotation does not create a new displayed session.
+      x-status: integration-and-runtime-smoke-tested
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionList'
+              example:
+                items:
+                - id: 00000000-0000-4000-8000-000000000004
+                  client_type: mobile
+                  client_name: Android phone
+                  created_at: '2026-11-06T03:00:00Z'
+                  last_seen_at: '2026-11-06T03:00:00Z'
+                  expires_at: '2026-12-06T03:00:00Z'
+                  is_current: true
+                next_cursor: null
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      parameters:
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
+  /api/v1/users/me/sessions/{session_id}:
+    delete:
+      operationId: revokeSession
+      tags:
+      - users
+      summary: Revoke own session family
+      description: session_id is stable family UUID. Unknown/foreign 404; already revoked own family 204 while retained.
+        Revoking current family invalidates its access token immediately.
+      x-status: integration-and-runtime-smoke-tested
+      responses:
+        '204':
+          description: Success
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      parameters:
+      - $ref: '#/components/parameters/session_id'
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 204
+  /api/v1/devices:
+    get:
+      operationId: listDevices
+      tags:
+      - devices
+      summary: List devices with own active binding
+      description: Sort (bound_at DESC, binding_id DESC). Includes disabled/retired owned devices when no filter;
+        does not expose other users or old-binding reports.
+      x-status: integration-and-runtime-smoke-tested
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceList'
+              example:
+                items:
+                - id: 00000000-0000-4000-8000-000000000002
+                  binding_id: 00000000-0000-4000-8000-000000000003
+                  serial_number: RG-000001
+                  nickname: Gương xe của Việt
+                  model: RideGuard prototype
+                  hardware_revision: null
+                  status: ACTIVE
+                  latest_report: null
+                next_cursor: null
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      parameters:
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - ACTIVE
+          - DISABLED
+          - RETIRED
+        description: Optional server status filter, not physical health.
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
+  /api/v1/devices/{device_id}:
+    get:
+      operationId: getDevice
+      tags:
+      - devices
+      summary: Read own currently bound device
+      description: ''
+      x-status: integration-and-runtime-smoke-tested
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+              example:
+                id: 00000000-0000-4000-8000-000000000002
+                binding_id: 00000000-0000-4000-8000-000000000003
+                serial_number: RG-000001
+                nickname: Gương xe của Việt
+                model: RideGuard prototype
+                hardware_revision: null
+                status: ACTIVE
+                latest_report: null
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      parameters:
+      - $ref: '#/components/parameters/device_id'
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
+      - 404
+    patch:
+      operationId: renameDevice
+      tags:
+      - devices
+      summary: Change current binding nickname only
+      description: String after trim 1–60 characters, null clears. No ownership, serial or status updates.
+      x-status: integration-and-runtime-smoke-tested
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+              example:
+                id: 00000000-0000-4000-8000-000000000002
+                binding_id: 00000000-0000-4000-8000-000000000003
+                serial_number: RG-000001
+                nickname: Gương xe của Việt
+                model: RideGuard prototype
+                hardware_revision: null
+                status: ACTIVE
+                latest_report: null
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '413':
+          $ref: '#/components/responses/Error413'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      parameters:
+      - $ref: '#/components/parameters/device_id'
+      requestBody:
+        required: true
+        description: JSON UTF-8, max 32 KiB decoded body. Normalize documented strings then validate; passwords
+          are not normalized. Unknown properties rejected.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RenameDeviceRequest'
+            example:
+              nickname: Gương xe của Việt
+        x-max-decoded-bytes: 32768
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
+  /api/v1/devices/bind:
+    post:
+      operationId: bindDevice
+      tags:
+      - devices
+      summary: Bind preregistered serial
+      description: 'Transaction + device row lock + partial unique active binding. Unowned ACTIVE device: 201. Already
+        owned by caller or valid replay: 200, nickname unchanged. Other owner: 409 DEVICE_UNAVAILABLE, no owner
+        detail. Unknown/disabled/retired: 404 DEVICE_NOT_AVAILABLE. Closed original binding replay: 409 BINDING_NO_LONGER_ACTIVE,
+        even after same user rebinds. Serial is not physical possession proof. Full cached response retention is
+        7 days; minimal key/hash/resource marker persists for resource lifetime to prevent stale recreation. Expired
+        valid key: 409 IDEMPOTENCY_KEY_EXPIRED; in-progress concurrent request: 409 IDEMPOTENCY_IN_PROGRESS. See
+        proposed-api.md for retention approval.'
+      x-status: integration-and-runtime-smoke-tested
+      responses:
+        '201':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+              example:
+                id: 00000000-0000-4000-8000-000000000002
+                binding_id: 00000000-0000-4000-8000-000000000003
+                serial_number: RG-000001
+                nickname: Gương xe của Việt
+                model: RideGuard prototype
+                hardware_revision: null
+                status: ACTIVE
+                latest_report: null
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          description: Absent or inaccessible private resource; never reveal another owner.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                DEVICE_NOT_AVAILABLE:
+                  value:
+                    status: 404
+                    code: DEVICE_NOT_AVAILABLE
+                    message: Không thể hoàn tất yêu cầu.
+                    request_id: 00000000-0000-4000-8000-000000000001
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
+        '409':
+          description: State, version or idempotency conflict.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                DEVICE_UNAVAILABLE:
+                  value:
+                    status: 409
+                    code: DEVICE_UNAVAILABLE
+                    message: Thiết bị hiện không thể liên kết.
+                    request_id: 00000000-0000-4000-8000-000000000001
+                BINDING_NO_LONGER_ACTIVE:
+                  value:
+                    status: 409
+                    code: BINDING_NO_LONGER_ACTIVE
+                    message: Không thể hoàn tất yêu cầu.
+                    request_id: 00000000-0000-4000-8000-000000000001
+                IDEMPOTENCY_CONFLICT:
+                  value:
+                    status: 409
+                    code: IDEMPOTENCY_CONFLICT
+                    message: Không thể hoàn tất yêu cầu.
+                    request_id: 00000000-0000-4000-8000-000000000001
+                IDEMPOTENCY_KEY_EXPIRED:
+                  value:
+                    status: 409
+                    code: IDEMPOTENCY_KEY_EXPIRED
+                    message: Thao tác cần được đối chiếu lại trước khi tiếp tục.
+                    request_id: 00000000-0000-4000-8000-000000000001
+                IDEMPOTENCY_IN_PROGRESS:
+                  value:
+                    status: 409
+                    code: IDEMPOTENCY_IN_PROGRESS
+                    message: Thao tác cần được đối chiếu lại trước khi tiếp tục.
+                    request_id: 00000000-0000-4000-8000-000000000001
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
+        '413':
+          $ref: '#/components/responses/Error413'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+        '200':
+          description: Existing own active binding or valid idempotent replay; never changes nickname.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+              example:
+                id: 00000000-0000-4000-8000-000000000002
+                binding_id: 00000000-0000-4000-8000-000000000003
+                serial_number: RG-000001
+                nickname: Gương xe của Việt
+                model: RideGuard prototype
+                hardware_revision: null
+                status: ACTIVE
+                latest_report: null
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        description: JSON UTF-8, max 32 KiB decoded body. Normalize documented strings then validate; passwords
+          are not normalized. Unknown properties rejected.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BindRequest'
+            example:
+              serial_number: RG-000001
+              nickname: Gương xe của Việt
+        x-max-decoded-bytes: 32768
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
+      - 201
+  /api/v1/devices/{device_id}/binding:
+    delete:
+      operationId: unbindDevice
+      tags:
+      - devices
+      summary: Close own binding, retain history
+      description: 'Đã có code; chưa kiểm chứng PostgreSQL. expected_binding_id bắt buộc. Đúng caller/device: đóng
+        nếu active, retry binding đã đóng trả 204. Không tác động binding mới. Sai caller/device hoặc không tồn
+        tại: 404.'
+      x-status: integration-and-runtime-smoke-tested
+      responses:
+        '204':
+          description: Success
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      parameters:
+      - $ref: '#/components/parameters/device_id'
+      - name: expected_binding_id
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Chỉ đóng đúng binding này, đúng device và caller. Binding đã đóng vẫn trả 204; không ảnh hưởng
+          binding mới.
+        example: 00000000-0000-4000-8000-000000000003
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 204
+  /api/v1/device-bindings:
+    get:
+      operationId: listBindings
+      tags:
+      - devices
+      summary: List own binding history
+      description: Sort (bound_at DESC,id DESC). History is ownership history, not trip history; no subsequent owner
+        identity.
+      x-status: integration-and-runtime-smoke-tested
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BindingList'
+              example:
+                items:
+                - id: 00000000-0000-4000-8000-000000000003
+                  device_id: 00000000-0000-4000-8000-000000000002
+                  serial_number: RG-000001
+                  nickname: Gương xe của Việt
+                  model: RideGuard prototype
+                  hardware_revision: null
+                  bound_at: '2026-11-06T03:00:00Z'
+                  unbound_at: null
+                  status: ACTIVE
+                next_cursor: null
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      parameters:
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - ACTIVE
+          - UNBOUND
+        description: Derived from unbound_at.
+      - name: device_id
+        in: query
+        schema:
+          type: string
+          format: uuid
+        description: Optional device filter; still scoped to caller.
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
+  /api/v1/devices/{device_id}/config:
+    get:
+      operationId: getDeviceConfig
+      tags:
+      - configuration
+      summary: Read current binding desired/applied config
+      description: ''
+      x-status: integration-and-runtime-smoke-tested
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceConfig'
+              example:
+                binding_id: 00000000-0000-4000-8000-000000000003
+                schema_version: 1
+                desired_version: 2
+                reported_applied_version: 1
+                settings:
+                  display_brightness: 70
+                  vibration_enabled: true
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      parameters:
+      - $ref: '#/components/parameters/device_id'
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
+      - 404
+    patch:
+      operationId: updateDeviceConfig
+      tags:
+      - configuration
+      summary: Compare-and-set desired settings
+      description: 'expected_version only, no If-Match. Nonempty settings patch; absent fields unchanged, null/unknown
+        rejected. Atomic increment + immutable issued version record. Wrong expected_version: 409 VERSION_CONFLICT;
+        non-ACTIVE device: 409 DEVICE_NOT_ACTIVE. No offline edit, risk thresholds or master warning disable. vibration_enabled=false
+        tắt cơ cấu rung; HUD và xử lý nguy cơ vẫn hoạt động. Không có master-disable hoặc ngưỡng AI.'
+      x-status: integration-and-runtime-smoke-tested
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceConfig'
+              example:
+                binding_id: 00000000-0000-4000-8000-000000000003
+                schema_version: 1
+                desired_version: 3
+                reported_applied_version: 1
+                settings:
+                  display_brightness: 80
+                  vibration_enabled: true
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          description: State, version or idempotency conflict.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                VERSION_CONFLICT:
+                  value:
+                    status: 409
+                    code: VERSION_CONFLICT
+                    message: Không thể hoàn tất yêu cầu.
+                    request_id: 00000000-0000-4000-8000-000000000001
+                DEVICE_NOT_ACTIVE:
+                  value:
+                    status: 409
+                    code: DEVICE_NOT_ACTIVE
+                    message: Không thể hoàn tất yêu cầu.
+                    request_id: 00000000-0000-4000-8000-000000000001
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
+        '413':
+          $ref: '#/components/responses/Error413'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      parameters:
+      - $ref: '#/components/parameters/device_id'
+      requestBody:
+        required: true
+        description: JSON UTF-8, max 32 KiB decoded body. Normalize documented strings then validate; passwords
+          are not normalized. Unknown properties rejected.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfigPatchRequest'
+            example:
+              expected_version: 2
+              settings:
+                display_brightness: 80
+                vibration_enabled: true
+        x-max-decoded-bytes: 32768
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
+      - 409
+  /api/v1/devices/{device_id}/config/ack:
+    post:
+      operationId: ackDeviceConfig
+      tags:
+      - configuration
+      summary: Report BLE application ACK
+      description: Check current owned binding (foreign/closed/mismatch 404); require issued binding-scoped version
+        <= desired (else 409 CONFIG_VERSION_NOT_ISSUED). Store max(previous, incoming); old/duplicate valid ACK
+        succeeds, never decreases applied. Mobile assertion, no hardware cryptographic proof. ACK allowed even if
+        server device status changed, without issuing new config.
+      x-status: integration-and-runtime-smoke-tested
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceConfig'
+              example:
+                binding_id: 00000000-0000-4000-8000-000000000003
+                schema_version: 1
+                desired_version: 2
+                reported_applied_version: 2
+                settings:
+                  display_brightness: 70
+                  vibration_enabled: true
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          description: State, version or idempotency conflict.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                CONFIG_VERSION_NOT_ISSUED:
+                  value:
+                    status: 409
+                    code: CONFIG_VERSION_NOT_ISSUED
+                    message: Không thể hoàn tất yêu cầu.
+                    request_id: 00000000-0000-4000-8000-000000000001
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
+        '413':
+          $ref: '#/components/responses/Error413'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      parameters:
+      - $ref: '#/components/parameters/device_id'
+      requestBody:
+        required: true
+        description: JSON UTF-8, max 32 KiB decoded body. Normalize documented strings then validate; passwords
+          are not normalized. Unknown properties rejected.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfigAckRequest'
+            example:
+              binding_id: 00000000-0000-4000-8000-000000000003
+              reported_applied_version: 2
+        x-max-decoded-bytes: 32768
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
+      - 404
+  /api/v1/devices/{device_id}/reports:
+    post:
+      operationId: reportDeviceStatus
+      tags:
+      - reports
+      summary: Submit bounded hardware-status metadata observed by mobile
+      description: 'Current owned binding only; serialize against binding. observed_at from mobile, received_at
+        from server. Allow received_at-24h <= observed_at <= received_at+5min; outside: 400 OBSERVED_AT_OUT_OF_RANGE.
+        Strictly newer observation accepted=true; older/equal valid observation accepted=false (200), never replaces
+        latest. BLE link alone cannot imply OK. Not real-time online; no raw sensor/GPS upload.'
+      x-status: integration-and-runtime-smoke-tested
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportReceipt'
+              examples:
+                newer:
+                  value:
+                    accepted: true
+                    received_at: '2026-11-06T03:00:01Z'
+                stale_or_equal:
+                  value:
+                    accepted: false
+                    received_at: '2026-11-06T03:00:02Z'
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '413':
+          $ref: '#/components/responses/Error413'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      parameters:
+      - $ref: '#/components/parameters/device_id'
+      requestBody:
+        required: true
+        description: JSON UTF-8, max 32 KiB decoded body. Normalize documented strings then validate; passwords
+          are not normalized. Unknown properties rejected.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceReportRequest'
+            example:
+              binding_id: 00000000-0000-4000-8000-000000000003
+              observed_at: '2026-11-06T03:00:00Z'
+              firmware_version: 0.1.0
+              radar_status: OK
+              imu_status: OK
+              display_status: OK
+              vibration_status: UNKNOWN
+              battery_percent: null
+        x-max-decoded-bytes: 32768
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
+      - 404
+  /api/v1/feedbacks:
+    post:
+      operationId: createFeedback
+      tags:
+      - feedback
+      summary: Create own feedback
+      description: 'device_id explicitly null or currently owned. Store binding context at creation; later unbind
+        does not hide own feedback or transfer it. Client cannot set status/admin_response. Valid replay 200; different
+        normalized payload 409 IDEMPOTENCY_CONFLICT. No attachments. Full cached response retention is 7 days; minimal
+        key/hash/resource marker persists for resource lifetime to prevent stale recreation. Expired valid key:
+        409 IDEMPOTENCY_KEY_EXPIRED; in-progress concurrent request: 409 IDEMPOTENCY_IN_PROGRESS. See proposed-api.md
+        for retention approval.'
+      x-status: integration-and-runtime-smoke-tested
+      responses:
+        '201':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feedback'
+              example:
+                id: 00000000-0000-4000-8000-000000000004
+                device_id: 00000000-0000-4000-8000-000000000002
+                category: SUGGESTION
+                content: Đề nghị làm rõ trạng thái chờ đồng bộ.
+                status: OPEN
+                admin_response: null
+                created_at: '2026-11-06T03:00:00Z'
+                responded_at: null
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          description: State, version or idempotency conflict.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                IDEMPOTENCY_CONFLICT:
+                  value:
+                    status: 409
+                    code: IDEMPOTENCY_CONFLICT
+                    message: Không thể hoàn tất yêu cầu.
+                    request_id: 00000000-0000-4000-8000-000000000001
+                IDEMPOTENCY_KEY_EXPIRED:
+                  value:
+                    status: 409
+                    code: IDEMPOTENCY_KEY_EXPIRED
+                    message: Thao tác cần được đối chiếu lại trước khi tiếp tục.
+                    request_id: 00000000-0000-4000-8000-000000000001
+                IDEMPOTENCY_IN_PROGRESS:
+                  value:
+                    status: 409
+                    code: IDEMPOTENCY_IN_PROGRESS
+                    message: Thao tác cần được đối chiếu lại trước khi tiếp tục.
+                    request_id: 00000000-0000-4000-8000-000000000001
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
+        '413':
+          $ref: '#/components/responses/Error413'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+        '200':
+          description: Idempotent replay of same own feedback after rechecking current permission to the feedback,
+            not requiring an old binding to remain active.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feedback'
+              example:
+                id: 00000000-0000-4000-8000-000000000004
+                device_id: 00000000-0000-4000-8000-000000000002
+                category: SUGGESTION
+                content: Đề nghị làm rõ trạng thái chờ đồng bộ.
+                status: OPEN
+                admin_response: null
+                created_at: '2026-11-06T03:00:00Z'
+                responded_at: null
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        description: JSON UTF-8, max 32 KiB decoded body. Normalize documented strings then validate; passwords
+          are not normalized. Unknown properties rejected.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFeedbackRequest'
+            example:
+              device_id: 00000000-0000-4000-8000-000000000002
+              category: SUGGESTION
+              content: Đề nghị làm rõ trạng thái chờ đồng bộ.
+        x-max-decoded-bytes: 32768
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 201
+    get:
+      operationId: listFeedback
+      tags:
+      - feedback
+      summary: List own feedback
+      description: Sort (created_at DESC,id DESC).
+      x-status: integration-and-runtime-smoke-tested
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackList'
+              example:
+                items:
+                - id: 00000000-0000-4000-8000-000000000004
+                  device_id: 00000000-0000-4000-8000-000000000002
+                  category: SUGGESTION
+                  content: Đề nghị làm rõ trạng thái chờ đồng bộ.
+                  status: OPEN
+                  admin_response: null
+                  created_at: '2026-11-06T03:00:00Z'
+                  responded_at: null
+                next_cursor: null
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      parameters:
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - OPEN
+          - IN_PROGRESS
+          - RESOLVED
+        description: Optional status filter.
+      - name: category
+        in: query
+        schema:
+          type: string
+          enum:
+          - BUG
+          - SUGGESTION
+          - OTHER
+        description: Optional category filter.
+      - name: device_id
+        in: query
+        schema:
+          type: string
+          format: uuid
+        description: Optional device association filter; never bypasses ownership.
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
+  /api/v1/feedbacks/{feedback_id}:
+    get:
+      operationId: getFeedback
+      tags:
+      - feedback
+      summary: Read own feedback and admin response
+      description: ''
+      x-status: integration-and-runtime-smoke-tested
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feedback'
+              example:
+                id: 00000000-0000-4000-8000-000000000004
+                device_id: 00000000-0000-4000-8000-000000000002
+                category: SUGGESTION
+                content: Đề nghị làm rõ trạng thái chờ đồng bộ.
+                status: OPEN
+                admin_response: null
+                created_at: '2026-11-06T03:00:00Z'
+                responded_at: null
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      parameters:
+      - $ref: '#/components/parameters/feedback_id'
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
+  /api/v1/admin/users:
+    get:
+      operationId: adminListUsers
+      tags:
+      - admin
+      summary: List users (ADMIN required)
+      description: Sort (created_at DESC,id DESC). Never returns password/session tokens.
+      x-status: integration-and-runtime-smoke-tested
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserList'
+              example:
+                items:
+                - id: 00000000-0000-4000-8000-000000000001
+                  email: viet@example.invalid
+                  full_name: Việt
+                  role: USER
+                  status: ACTIVE
+                  created_at: '2026-11-06T03:00:00Z'
+                  updated_at: '2026-11-06T03:00:00Z'
+                next_cursor: null
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      x-required-role: ADMIN
+      parameters:
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      - name: q
+        in: query
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description: Trimmed case-insensitive name/email search.
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - ACTIVE
+          - LOCKED
+        description: Account status.
+      - name: role
+        in: query
+        schema:
+          type: string
+          enum:
+          - USER
+          - ADMIN
+        description: Role filter, not assignment.
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
+      - 403
+  /api/v1/admin/users/{user_id}/status:
+    patch:
+      operationId: adminSetUserStatus
+      tags:
+      - admin
+      summary: Lock or unlock account (ADMIN required)
+      description: Đã có code; chưa kiểm chứng PostgreSQL. LOCKED revoke mọi phiên; ACTIVE không hồi sinh phiên.
+        409 ADMIN_SELF_LOCK khi tự khóa, 409 LAST_ADMIN khi khóa admin ACTIVE cuối. Khóa advisory transaction để
+        tuần tự hóa thao tác admin.
+      x-status: integration-and-runtime-smoke-tested
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+              example:
+                id: 00000000-0000-4000-8000-000000000001
+                email: viet@example.invalid
+                full_name: Việt
+                role: USER
+                status: LOCKED
+                created_at: '2026-11-06T03:00:00Z'
+                updated_at: '2026-11-06T03:00:00Z'
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '413':
+          $ref: '#/components/responses/Error413'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+        '409':
+          description: Admin lock protection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                status: 409
+                code: ADMIN_SELF_LOCK
+                message: Access denied
+                request_id: 00000000-0000-4000-8000-000000000001
+      x-required-role: ADMIN
+      parameters:
+      - $ref: '#/components/parameters/user_id'
+      requestBody:
+        required: true
+        description: JSON UTF-8, max 32 KiB decoded body. Normalize documented strings then validate; passwords
+          are not normalized. Unknown properties rejected.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetUserStatusRequest'
+            example:
+              status: LOCKED
+        x-max-decoded-bytes: 32768
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
+  /api/v1/admin/devices:
+    post:
+      operationId: adminCreateDevice
+      tags:
+      - admin
+      summary: Preregister unique serial (ADMIN required)
+      description: 'Server assigns ACTIVE. Duplicate canonical serial: 409 SERIAL_ALREADY_REGISTERED; unique DB
+        constraint. Does not create a binding. No hardware secret fields.'
+      x-status: integration-and-runtime-smoke-tested
+      responses:
+        '201':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminDevice'
+              example:
+                id: 00000000-0000-4000-8000-000000000002
+                serial_number: RG-000001
+                model: RideGuard prototype
+                hardware_revision: null
+                status: ACTIVE
+                created_at: '2026-11-06T03:00:00Z'
+                updated_at: '2026-11-06T03:00:00Z'
+                active_binding_id: null
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '413':
+          $ref: '#/components/responses/Error413'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      x-required-role: ADMIN
+      requestBody:
+        required: true
+        description: JSON UTF-8, max 32 KiB decoded body. Normalize documented strings then validate; passwords
+          are not normalized. Unknown properties rejected.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDeviceRequest'
+            example:
+              serial_number: RG-000001
+              model: RideGuard prototype
+              hardware_revision: null
+        x-max-decoded-bytes: 32768
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 201
+    get:
+      operationId: adminListDevices
+      tags:
+      - admin
+      summary: List registered devices (ADMIN required)
+      description: Sort (created_at DESC,id DESC). No owner transfer or location history.
+      x-status: integration-and-runtime-smoke-tested
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminDeviceList'
+              example:
+                items:
+                - id: 00000000-0000-4000-8000-000000000002
+                  serial_number: RG-000001
+                  model: RideGuard prototype
+                  hardware_revision: null
+                  status: ACTIVE
+                  created_at: '2026-11-06T03:00:00Z'
+                  updated_at: '2026-11-06T03:00:00Z'
+                  active_binding_id: 00000000-0000-4000-8000-000000000003
+                next_cursor: null
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      x-required-role: ADMIN
+      parameters:
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      - name: q
+        in: query
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description: Canonical serial/model search.
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - ACTIVE
+          - DISABLED
+          - RETIRED
+        description: Server device status filter.
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
+  /api/v1/admin/devices/{device_id}/status:
+    patch:
+      operationId: adminSetDeviceStatus
+      tags:
+      - admin
+      summary: Change registry status (ADMIN required)
+      description: ACTIVE <-> DISABLED; either may become RETIRED; RETIRED terminal (same status no-op, reversal
+        409 INVALID_STATUS_TRANSITION). Binding history retained. Status gates bind/config edits only; not an ESP32
+        shutdown command; warnings remain local.
+      x-status: integration-and-runtime-smoke-tested
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminDevice'
+              example:
+                id: 00000000-0000-4000-8000-000000000002
+                serial_number: RG-000001
+                model: RideGuard prototype
+                hardware_revision: null
+                status: DISABLED
+                created_at: '2026-11-06T03:00:00Z'
+                updated_at: '2026-11-06T03:00:00Z'
+                active_binding_id: 00000000-0000-4000-8000-000000000003
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '413':
+          $ref: '#/components/responses/Error413'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      x-required-role: ADMIN
+      parameters:
+      - $ref: '#/components/parameters/device_id'
+      requestBody:
+        required: true
+        description: JSON UTF-8, max 32 KiB decoded body. Normalize documented strings then validate; passwords
+          are not normalized. Unknown properties rejected.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetDeviceStatusRequest'
+            example:
+              status: DISABLED
+        x-max-decoded-bytes: 32768
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
+  /api/v1/admin/feedbacks:
+    get:
+      operationId: adminListFeedback
+      tags:
+      - admin
+      summary: List feedback for handling (ADMIN required)
+      description: Sort (created_at DESC,id DESC). No GPS/attachments.
+      x-status: integration-and-runtime-smoke-tested
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminFeedbackList'
+              example:
+                items:
+                - id: 00000000-0000-4000-8000-000000000004
+                  device_id: 00000000-0000-4000-8000-000000000002
+                  category: SUGGESTION
+                  content: Đề nghị làm rõ trạng thái chờ đồng bộ.
+                  status: OPEN
+                  admin_response: null
+                  created_at: '2026-11-06T03:00:00Z'
+                  responded_at: null
+                  user_id: 00000000-0000-4000-8000-000000000001
+                  binding_id: 00000000-0000-4000-8000-000000000003
+                next_cursor: null
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      x-required-role: ADMIN
+      parameters:
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - OPEN
+          - IN_PROGRESS
+          - RESOLVED
+        description: Optional status filter.
+      - name: category
+        in: query
+        schema:
+          type: string
+          enum:
+          - BUG
+          - SUGGESTION
+          - OTHER
+        description: Optional category filter.
+      - name: device_id
+        in: query
+        schema:
+          type: string
+          format: uuid
+        description: Optional device association filter; never bypasses ownership.
+      - name: user_id
+        in: query
+        schema:
+          type: string
+          format: uuid
+        description: Admin-only author filter; no self-service impersonation.
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
+  /api/v1/admin/feedbacks/{feedback_id}:
+    patch:
+      operationId: adminUpdateFeedback
+      tags:
+      - admin
+      summary: Set feedback status/response (ADMIN required)
+      description: Any OPEN/IN_PROGRESS/RESOLVED transition allowed, including reopen. Only status/admin_response
+        writable; response timestamp is server time when response changes. Omitted fields unchanged, null rejected;
+        empty patch rejected.
+      x-status: integration-and-runtime-smoke-tested
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminFeedback'
+              example:
+                id: 00000000-0000-4000-8000-000000000004
+                device_id: 00000000-0000-4000-8000-000000000002
+                category: SUGGESTION
+                content: Đề nghị làm rõ trạng thái chờ đồng bộ.
+                status: IN_PROGRESS
+                admin_response: Đã tiếp nhận phản hồi.
+                created_at: '2026-11-06T03:00:00Z'
+                responded_at: '2026-11-06T03:00:00Z'
+                user_id: 00000000-0000-4000-8000-000000000001
+                binding_id: 00000000-0000-4000-8000-000000000003
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '413':
+          $ref: '#/components/responses/Error413'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      x-required-role: ADMIN
+      parameters:
+      - $ref: '#/components/parameters/feedback_id'
+      requestBody:
+        required: true
+        description: JSON UTF-8, max 32 KiB decoded body. Normalize documented strings then validate; passwords
+          are not normalized. Unknown properties rejected.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminFeedbackPatchRequest'
+            example:
+              status: IN_PROGRESS
+              admin_response: Đã tiếp nhận phản hồi.
+        x-max-decoded-bytes: 32768
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
   /actuator/health:
     get:
       operationId: health
       summary: Aggregate health (includes database)
       responses:
-        '200': { $ref: '#/components/responses/Healthy' }
-        '503': { $ref: '#/components/responses/Unhealthy' }
+        '200':
+          $ref: '#/components/responses/Healthy'
+        '503':
+          $ref: '#/components/responses/Unhealthy'
+      security: []
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
   /actuator/health/liveness:
     get:
       operationId: liveness
       summary: Process liveness (does not require database after startup)
       responses:
-        '200': { $ref: '#/components/responses/Healthy' }
-        '503': { $ref: '#/components/responses/Unhealthy' }
+        '200':
+          $ref: '#/components/responses/Healthy'
+        '503':
+          $ref: '#/components/responses/Unhealthy'
+      security: []
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
   /actuator/health/readiness:
     get:
       operationId: readiness
       summary: Ready to serve only when application and database are available
       responses:
-        '200': { $ref: '#/components/responses/Healthy' }
-        '503': { $ref: '#/components/responses/Unhealthy' }
+        '200':
+          $ref: '#/components/responses/Healthy'
+        '503':
+          $ref: '#/components/responses/Unhealthy'
+      security: []
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT (proposed)
+      description: 15 minute access token plus authoritative session/account revocation checks.
+    refreshCookie:
+      type: apiKey
+      in: cookie
+      name: rg_refresh
+      description: admin_web only; HttpOnly Secure cookie, maximum absolute 30 day session lifetime.
+    csrfProtection:
+      type: apiKey
+      in: header
+      name: X-CSRF-Protection
+      description: admin_web cookie flow requires literal 1 plus trusted Origin; value is not a secret. CORS exact
+        origins only.
+  parameters:
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+      example: 20
+    Cursor:
+      name: cursor
+      in: query
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 2048
+      description: 'Opaque integrity-protected cursor bound to caller, route, sort and filters. Invalid/tampered/mismatched
+        cursor: 400.'
+      example: opaque-synthetic-cursor
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: 00000000-0000-4000-8000-000000000004
+      description: 'UUID scoped to authenticated user+method+route+key. Retain 7 days after success. Same validated/normalized
+        payload: replay after fresh authorization/state check, no duplicate. Different payload: 409 IDEMPOTENCY_CONFLICT.
+        Closed original binding: 409 BINDING_NO_LONGER_ACTIVE. Full response cache expires after 7 days; retain
+        minimal key/hash/resource tombstone for the resource lifetime. After cache expiry return 409 IDEMPOTENCY_KEY_EXPIRED,
+        with BINDING_NO_LONGER_ACTIVE taking precedence for closed binding. Never silently treat an expired key
+        as a new operation. Same-key success replay is 200; permission/state is checked first. Canonical request
+        hashing includes defaults for omitted optional fields (nickname=null), sorted object keys, UTF-8 and the
+        documented string normalization.'
+    ClientType:
+      name: X-Client-Type
+      in: header
+      required: true
+      schema:
+        type: string
+        enum:
+        - mobile
+        - admin_web
+      example: mobile
+    CsrfProtection:
+      name: X-CSRF-Protection
+      in: header
+      required: false
+      schema:
+        type: string
+        const: '1'
+      example: '1'
+      description: Required for admin_web login/refresh/logout; strict Origin validation + non-simple JSON/header
+        + credentialed exact-origin CORS. Not a secret. Deployment origins/SameSite must be approved before enabling
+        cookies.
+    device_id:
+      name: device_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: 00000000-0000-4000-8000-000000000002
+    session_id:
+      name: session_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: 00000000-0000-4000-8000-000000000004
+    user_id:
+      name: user_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: 00000000-0000-4000-8000-000000000001
+    feedback_id:
+      name: feedback_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: 00000000-0000-4000-8000-000000000004
   schemas:
-    Health:
+    Error:
       type: object
-      required: [status]
       additionalProperties: false
       properties:
-        status: { type: string, enum: [UP, DOWN, OUT_OF_SERVICE, UNKNOWN] }
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+          readOnly: true
+        code:
+          type: string
+          minLength: 1
+          maxLength: 64
+          readOnly: true
+        message:
+          type: string
+          minLength: 1
+          maxLength: 500
+          readOnly: true
+        request_id:
+          type: string
+          format: uuid
+          readOnly: true
+      required:
+      - status
+      - code
+      - message
+      - request_id
+    User:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        email:
+          type: string
+          minLength: 3
+          maxLength: 254
+          format: email
+          description: Trim and lowercase entire address; no provider-specific dot/plus rewriting. MVP does not
+            change email.
+          readOnly: true
+        full_name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          pattern: ^\S(?:[\s\S]*\S)?$
+          description: Trim before validation; 1–100 Unicode characters.
+          readOnly: true
+        role:
+          type: string
+          enum:
+          - USER
+          - ADMIN
+          readOnly: true
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - LOCKED
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          pattern: Z$
+          description: RFC 3339 UTC, serialized with Z suffix.
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          pattern: Z$
+          description: RFC 3339 UTC, serialized with Z suffix.
+          readOnly: true
+      required:
+      - id
+      - email
+      - full_name
+      - role
+      - status
+      - created_at
+      - updated_at
+    RegisterRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+          minLength: 3
+          maxLength: 254
+          format: email
+          description: Trim and lowercase entire address; no provider-specific dot/plus rewriting. MVP does not
+            change email.
+        full_name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          pattern: ^\S(?:[\s\S]*\S)?$
+          description: Trim before validation; 1–100 Unicode characters.
+        password:
+          type: string
+          minLength: 12
+          maxLength: 128
+          writeOnly: true
+          description: 12–128 Unicode characters; never trim, normalize, truncate or echo.
+      required:
+      - email
+      - full_name
+      - password
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+          minLength: 3
+          maxLength: 254
+          format: email
+          description: Trim and lowercase entire address; no provider-specific dot/plus rewriting. MVP does not
+            change email.
+        password:
+          type: string
+          minLength: 12
+          maxLength: 128
+          writeOnly: true
+          description: 12–128 Unicode characters; never trim, normalize, truncate or echo.
+        client_name:
+          type:
+          - string
+          - 'null'
+          minLength: 1
+          maxLength: 100
+          default: null
+      required:
+      - email
+      - password
+    RefreshRequest:
+      oneOf:
+      - $ref: '#/components/schemas/MobileRefreshRequest'
+      - $ref: '#/components/schemas/WebRefreshRequest'
+      description: 'X-Client-Type=mobile requires refresh_token body and ignores cookies. admin_web requires {}
+        body plus rg_refresh cookie and X-CSRF-Protection: 1; refresh_token in body rejected.'
+    MobileRefreshRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        refresh_token:
+          type: string
+          minLength: 32
+          maxLength: 4096
+          writeOnly: true
+          description: Opaque high-entropy credential; example values are synthetic, never valid credentials.
+      required:
+      - refresh_token
+    WebRefreshRequest:
+      type: object
+      additionalProperties: false
+      properties: {}
+      required: []
+    MobileTokenResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        access_token:
+          type: string
+          minLength: 1
+          maxLength: 4096
+          readOnly: true
+        refresh_token:
+          type: string
+          minLength: 32
+          maxLength: 4096
+          readOnly: true
+        token_type:
+          type: string
+          const: Bearer
+          readOnly: true
+        expires_in:
+          type: integer
+          const: 900
+          readOnly: true
+        user:
+          $ref: '#/components/schemas/User'
+      required:
+      - access_token
+      - refresh_token
+      - token_type
+      - expires_in
+      - user
+    WebTokenResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        access_token:
+          type: string
+          minLength: 1
+          maxLength: 4096
+          readOnly: true
+        token_type:
+          type: string
+          const: Bearer
+          readOnly: true
+        expires_in:
+          type: integer
+          const: 900
+          readOnly: true
+        user:
+          $ref: '#/components/schemas/User'
+      required:
+      - access_token
+      - token_type
+      - expires_in
+      - user
+    TokenResponse:
+      oneOf:
+      - $ref: '#/components/schemas/MobileTokenResponse'
+      - $ref: '#/components/schemas/WebTokenResponse'
+      description: Mobile response includes refresh_token. admin_web response excludes it; Set-Cookie carries rotated
+        refresh token. Transport selected by X-Client-Type, never inferred from body alone.
+    ForgotPasswordRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+          minLength: 3
+          maxLength: 254
+          format: email
+          description: Trim and lowercase entire address; no provider-specific dot/plus rewriting. MVP does not
+            change email.
+      required:
+      - email
+    Message:
+      type: object
+      additionalProperties: false
+      properties:
+        message:
+          type: string
+          minLength: 1
+          maxLength: 500
+          readOnly: true
+      required:
+      - message
+    ResetPasswordRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        reset_token:
+          type: string
+          minLength: 32
+          maxLength: 4096
+          writeOnly: true
+          description: Opaque high-entropy credential; example values are synthetic, never valid credentials.
+        new_password:
+          type: string
+          minLength: 12
+          maxLength: 128
+          writeOnly: true
+          description: 12–128 Unicode characters; never trim, normalize, truncate or echo.
+      required:
+      - reset_token
+      - new_password
+    UpdateProfileRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        full_name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          pattern: ^\S(?:[\s\S]*\S)?$
+          description: Trim before validation; 1–100 Unicode characters.
+      required:
+      - full_name
+    ChangePasswordRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        current_password:
+          type: string
+          minLength: 12
+          maxLength: 128
+          writeOnly: true
+          description: 12–128 Unicode characters; never trim, normalize, truncate or echo.
+        new_password:
+          type: string
+          minLength: 12
+          maxLength: 128
+          writeOnly: true
+          description: 12–128 Unicode characters; never trim, normalize, truncate or echo.
+      required:
+      - current_password
+      - new_password
+    Session:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        client_type:
+          type: string
+          enum:
+          - mobile
+          - admin_web
+          readOnly: true
+        client_name:
+          type:
+          - string
+          - 'null'
+          minLength: 1
+          maxLength: 100
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          pattern: Z$
+          description: RFC 3339 UTC, serialized with Z suffix.
+          readOnly: true
+        last_seen_at:
+          type: string
+          format: date-time
+          pattern: Z$
+          description: RFC 3339 UTC, serialized with Z suffix.
+          readOnly: true
+        expires_at:
+          type: string
+          format: date-time
+          pattern: Z$
+          description: RFC 3339 UTC, serialized with Z suffix.
+          readOnly: true
+        is_current:
+          type: boolean
+          readOnly: true
+      required:
+      - id
+      - client_type
+      - client_name
+      - created_at
+      - last_seen_at
+      - expires_at
+      - is_current
+      description: One logical session family; id is its stable family_id across refresh rotation. No token/hash
+        returned. Only unexpired, unrevoked sessions listed.
+    DeviceReport:
+      type: object
+      additionalProperties: false
+      properties:
+        binding_id:
+          type: string
+          format: uuid
+          readOnly: true
+        observed_at:
+          type: string
+          format: date-time
+          pattern: Z$
+          description: RFC 3339 UTC, serialized with Z suffix.
+          readOnly: true
+        firmware_version:
+          type:
+          - string
+          - 'null'
+          minLength: 1
+          maxLength: 64
+          readOnly: true
+        radar_status:
+          type: string
+          enum:
+          - OK
+          - ERROR
+          - UNAVAILABLE
+          - UNKNOWN
+          readOnly: true
+        imu_status:
+          type: string
+          enum:
+          - OK
+          - ERROR
+          - UNAVAILABLE
+          - UNKNOWN
+          readOnly: true
+        display_status:
+          type: string
+          enum:
+          - OK
+          - ERROR
+          - UNAVAILABLE
+          - UNKNOWN
+          readOnly: true
+        vibration_status:
+          type: string
+          enum:
+          - OK
+          - ERROR
+          - UNAVAILABLE
+          - UNKNOWN
+          readOnly: true
+        battery_percent:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+          maximum: 100
+          readOnly: true
+        received_at:
+          type: string
+          format: date-time
+          pattern: Z$
+          description: RFC 3339 UTC, serialized with Z suffix.
+          readOnly: true
+      required:
+      - binding_id
+      - observed_at
+      - firmware_version
+      - radar_status
+      - imu_status
+      - display_status
+      - vibration_status
+      - battery_percent
+      - received_at
+      description: Latest accepted observation for current binding only; not an online indicator.
+    Device:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        binding_id:
+          type: string
+          format: uuid
+          readOnly: true
+        serial_number:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: ^[A-Z0-9][A-Z0-9-]{0,127}$
+          description: 'Canonical serial: trim and uppercase ASCII before validation. Not a password; preregistered
+            by admin.'
+          readOnly: true
+        nickname:
+          type:
+          - string
+          - 'null'
+          minLength: 1
+          maxLength: 60
+          pattern: ^\S(?:[\s\S]*\S)?$
+          description: Trim string; null clears nickname. Stored on ownership binding.
+          readOnly: true
+        model:
+          type: string
+          minLength: 1
+          maxLength: 100
+          readOnly: true
+        hardware_revision:
+          type:
+          - string
+          - 'null'
+          minLength: 1
+          maxLength: 64
+          readOnly: true
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - DISABLED
+          - RETIRED
+          readOnly: true
+        latest_report:
+          anyOf:
+          - $ref: '#/components/schemas/DeviceReport'
+          - type: 'null'
+          readOnly: true
+      required:
+      - id
+      - binding_id
+      - serial_number
+      - nickname
+      - model
+      - hardware_revision
+      - status
+      - latest_report
+    BindRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        serial_number:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: ^[A-Z0-9][A-Z0-9-]{0,127}$
+          description: 'Canonical serial: trim and uppercase ASCII before validation. Not a password; preregistered
+            by admin.'
+        nickname:
+          type:
+          - string
+          - 'null'
+          minLength: 1
+          maxLength: 60
+          pattern: ^\S(?:[\s\S]*\S)?$
+          description: Trim string; null clears nickname. Stored on ownership binding.
+          default: null
+      required:
+      - serial_number
+    RenameDeviceRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        nickname:
+          type:
+          - string
+          - 'null'
+          minLength: 1
+          maxLength: 60
+          pattern: ^\S(?:[\s\S]*\S)?$
+          description: Trim string; null clears nickname. Stored on ownership binding.
+      required:
+      - nickname
+    Binding:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        device_id:
+          type: string
+          format: uuid
+          readOnly: true
+        serial_number:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: ^[A-Z0-9][A-Z0-9-]{0,127}$
+          description: 'Canonical serial: trim and uppercase ASCII before validation. Not a password; preregistered
+            by admin.'
+          readOnly: true
+        nickname:
+          type:
+          - string
+          - 'null'
+          minLength: 1
+          maxLength: 60
+          pattern: ^\S(?:[\s\S]*\S)?$
+          description: Trim string; null clears nickname. Stored on ownership binding.
+          readOnly: true
+        model:
+          type: string
+          minLength: 1
+          maxLength: 100
+          readOnly: true
+        hardware_revision:
+          type:
+          - string
+          - 'null'
+          minLength: 1
+          maxLength: 64
+          readOnly: true
+        bound_at:
+          type: string
+          format: date-time
+          pattern: Z$
+          description: RFC 3339 UTC, serialized with Z suffix.
+          readOnly: true
+        unbound_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          pattern: Z$
+          description: RFC 3339 UTC, serialized with Z suffix.
+          readOnly: true
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - UNBOUND
+          readOnly: true
+      required:
+      - id
+      - device_id
+      - serial_number
+      - nickname
+      - model
+      - hardware_revision
+      - bound_at
+      - unbound_at
+      - status
+    DeviceConfig:
+      $ref: ./device-config.schema.json
+    SettingsPatch:
+      type: object
+      additionalProperties: false
+      properties:
+        display_brightness:
+          $ref: ./device-config.schema.json#/properties/settings/properties/display_brightness
+        vibration_enabled:
+          $ref: ./device-config.schema.json#/properties/settings/properties/vibration_enabled
+      required: []
+      minProperties: 1
+    ConfigPatchRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991
+        settings:
+          $ref: '#/components/schemas/SettingsPatch'
+      required:
+      - expected_version
+      - settings
+    ConfigAckRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        binding_id:
+          type: string
+          format: uuid
+        reported_applied_version:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991
+      required:
+      - binding_id
+      - reported_applied_version
+    DeviceReportRequest:
+      $ref: ./device-report.schema.json
+    ReportReceipt:
+      type: object
+      additionalProperties: false
+      properties:
+        accepted:
+          type: boolean
+          readOnly: true
+        received_at:
+          type: string
+          format: date-time
+          pattern: Z$
+          description: RFC 3339 UTC, serialized with Z suffix.
+          readOnly: true
+      required:
+      - accepted
+      - received_at
+    CreateFeedbackRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        device_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        category:
+          type: string
+          enum:
+          - BUG
+          - SUGGESTION
+          - OTHER
+        content:
+          type: string
+          minLength: 1
+          maxLength: 5000
+          pattern: ^\S(?:[\s\S]*\S)?$
+          description: Trim before validation; 1–5000 Unicode characters; no attachments.
+      required:
+      - device_id
+      - category
+      - content
+    Feedback:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        device_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+          readOnly: true
+        category:
+          type: string
+          enum:
+          - BUG
+          - SUGGESTION
+          - OTHER
+          readOnly: true
+        content:
+          type: string
+          minLength: 1
+          maxLength: 5000
+          pattern: ^\S(?:[\s\S]*\S)?$
+          description: Trim before validation; 1–5000 Unicode characters; no attachments.
+          readOnly: true
+        status:
+          type: string
+          enum:
+          - OPEN
+          - IN_PROGRESS
+          - RESOLVED
+          readOnly: true
+        admin_response:
+          type:
+          - string
+          - 'null'
+          minLength: 1
+          maxLength: 5000
+          pattern: ^\S(?:[\s\S]*\S)?$
+          description: Trim before validation; 1–5000 Unicode characters; no attachments.
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          pattern: Z$
+          description: RFC 3339 UTC, serialized with Z suffix.
+          readOnly: true
+        responded_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          pattern: Z$
+          description: RFC 3339 UTC, serialized with Z suffix.
+          readOnly: true
+      required:
+      - id
+      - device_id
+      - category
+      - content
+      - status
+      - admin_response
+      - created_at
+      - responded_at
+    AdminFeedback:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        device_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+          readOnly: true
+        category:
+          type: string
+          enum:
+          - BUG
+          - SUGGESTION
+          - OTHER
+          readOnly: true
+        content:
+          type: string
+          minLength: 1
+          maxLength: 5000
+          pattern: ^\S(?:[\s\S]*\S)?$
+          description: Trim before validation; 1–5000 Unicode characters; no attachments.
+          readOnly: true
+        status:
+          type: string
+          enum:
+          - OPEN
+          - IN_PROGRESS
+          - RESOLVED
+          readOnly: true
+        admin_response:
+          type:
+          - string
+          - 'null'
+          minLength: 1
+          maxLength: 5000
+          pattern: ^\S(?:[\s\S]*\S)?$
+          description: Trim before validation; 1–5000 Unicode characters; no attachments.
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          pattern: Z$
+          description: RFC 3339 UTC, serialized with Z suffix.
+          readOnly: true
+        responded_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          pattern: Z$
+          description: RFC 3339 UTC, serialized with Z suffix.
+          readOnly: true
+        user_id:
+          type: string
+          format: uuid
+          readOnly: true
+        binding_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+          readOnly: true
+      required:
+      - id
+      - device_id
+      - category
+      - content
+      - status
+      - admin_response
+      - created_at
+      - responded_at
+      - user_id
+      - binding_id
+    SetUserStatusRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - LOCKED
+      required:
+      - status
+    CreateDeviceRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        serial_number:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: ^[A-Z0-9][A-Z0-9-]{0,127}$
+          description: 'Canonical serial: trim and uppercase ASCII before validation. Not a password; preregistered
+            by admin.'
+        model:
+          type: string
+          minLength: 1
+          maxLength: 100
+        hardware_revision:
+          type:
+          - string
+          - 'null'
+          minLength: 1
+          maxLength: 64
+          default: null
+      required:
+      - serial_number
+      - model
+    AdminDevice:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        serial_number:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: ^[A-Z0-9][A-Z0-9-]{0,127}$
+          description: 'Canonical serial: trim and uppercase ASCII before validation. Not a password; preregistered
+            by admin.'
+          readOnly: true
+        model:
+          type: string
+          minLength: 1
+          maxLength: 100
+          readOnly: true
+        hardware_revision:
+          type:
+          - string
+          - 'null'
+          minLength: 1
+          maxLength: 64
+          readOnly: true
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - DISABLED
+          - RETIRED
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          pattern: Z$
+          description: RFC 3339 UTC, serialized with Z suffix.
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          pattern: Z$
+          description: RFC 3339 UTC, serialized with Z suffix.
+          readOnly: true
+        active_binding_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+          readOnly: true
+      required:
+      - id
+      - serial_number
+      - model
+      - hardware_revision
+      - status
+      - created_at
+      - updated_at
+      - active_binding_id
+    SetDeviceStatusRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - DISABLED
+          - RETIRED
+      required:
+      - status
+    AdminFeedbackPatchRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum:
+          - OPEN
+          - IN_PROGRESS
+          - RESOLVED
+        admin_response:
+          type: string
+          minLength: 1
+          maxLength: 5000
+          pattern: ^\S(?:[\s\S]*\S)?$
+          description: Trim before validation; 1–5000 Unicode characters; no attachments.
+      required: []
+      minProperties: 1
+      description: Omitted fields unchanged, null rejected. admin_response updates responded_at to server time.
+        Status changes alone preserve response/timestamp. No user/device/content reassignment.
+    DeviceList:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Device'
+          maxItems: 100
+        next_cursor:
+          type:
+          - string
+          - 'null'
+          minLength: 1
+          maxLength: 2048
+      required:
+      - items
+      - next_cursor
+    BindingList:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Binding'
+          maxItems: 100
+        next_cursor:
+          type:
+          - string
+          - 'null'
+          minLength: 1
+          maxLength: 2048
+      required:
+      - items
+      - next_cursor
+    FeedbackList:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Feedback'
+          maxItems: 100
+        next_cursor:
+          type:
+          - string
+          - 'null'
+          minLength: 1
+          maxLength: 2048
+      required:
+      - items
+      - next_cursor
+    AdminFeedbackList:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminFeedback'
+          maxItems: 100
+        next_cursor:
+          type:
+          - string
+          - 'null'
+          minLength: 1
+          maxLength: 2048
+      required:
+      - items
+      - next_cursor
+    UserList:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+          maxItems: 100
+        next_cursor:
+          type:
+          - string
+          - 'null'
+          minLength: 1
+          maxLength: 2048
+      required:
+      - items
+      - next_cursor
+    AdminDeviceList:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminDevice'
+          maxItems: 100
+        next_cursor:
+          type:
+          - string
+          - 'null'
+          minLength: 1
+          maxLength: 2048
+      required:
+      - items
+      - next_cursor
+    SessionList:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Session'
+          maxItems: 100
+        next_cursor:
+          type:
+          - string
+          - 'null'
+          minLength: 1
+          maxLength: 2048
+      required:
+      - items
+      - next_cursor
+    Health:
+      type: object
+      required:
+      - status
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum:
+          - UP
+          - DOWN
+          - OUT_OF_SERVICE
+          - UNKNOWN
         groups:
           type: array
           description: Public probe group names on aggregate health only
-          items: { type: string, enum: [liveness, readiness] }
+          items:
+            type: string
+            enum:
+            - liveness
+            - readiness
     ApiError:
       type: object
-      required: [status, code, message]
+      required:
+      - status
+      - code
+      - message
+      - request_id
       additionalProperties: false
       properties:
-        status: { type: integer, minimum: 400, maximum: 599 }
-        code: { type: string }
-        message: { type: string }
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        code:
+          type: string
+        message:
+          type: string
+        request_id:
+          type: string
+          format: uuid
   responses:
+    Error400:
+      description: Invalid schema, unknown/null field, timestamp or cursor.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            status: 400
+            code: INVALID_REQUEST
+            message: Không thể hoàn tất yêu cầu.
+            request_id: 00000000-0000-4000-8000-000000000001
+    Error401:
+      description: Missing/expired credential, revoked session or locked account.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            status: 401
+            code: UNAUTHORIZED
+            message: Không thể hoàn tất yêu cầu.
+            request_id: 00000000-0000-4000-8000-000000000001
+    Error403:
+      description: Valid credential but missing role, or rejected browser Origin/CSRF.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            status: 403
+            code: FORBIDDEN
+            message: Không thể hoàn tất yêu cầu.
+            request_id: 00000000-0000-4000-8000-000000000001
+    Error404:
+      description: Absent or inaccessible private resource; never reveal another owner.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            status: 404
+            code: NOT_FOUND
+            message: Không thể hoàn tất yêu cầu.
+            request_id: 00000000-0000-4000-8000-000000000001
+    Error409:
+      description: State, version or idempotency conflict.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            status: 409
+            code: CONFLICT
+            message: Không thể hoàn tất yêu cầu.
+            request_id: 00000000-0000-4000-8000-000000000001
+    Error413:
+      description: JSON request exceeds 32 KiB decoded UTF-8 bytes.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            status: 413
+            code: PAYLOAD_TOO_LARGE
+            message: Không thể hoàn tất yêu cầu.
+            request_id: 00000000-0000-4000-8000-000000000001
+    Error429:
+      description: Configurable rate limit exceeded; retry after supplied delay.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            status: 429
+            code: RATE_LIMITED
+            message: Không thể hoàn tất yêu cầu.
+            request_id: 00000000-0000-4000-8000-000000000001
+      headers:
+        Retry-After:
+          description: Delay in seconds (proposed policy).
+          schema:
+            type: integer
+            minimum: 1
+          example: 30
+    Error500:
+      description: Unexpected server error; no internal details.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            status: 500
+            code: INTERNAL_ERROR
+            message: Không thể hoàn tất yêu cầu.
+            request_id: 00000000-0000-4000-8000-000000000001
+    Error503:
+      description: Temporary service outage; bounded retry allowed.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            status: 503
+            code: SERVICE_UNAVAILABLE
+            message: Không thể hoàn tất yêu cầu.
+            request_id: 00000000-0000-4000-8000-000000000001
+      headers:
+        Retry-After:
+          description: Delay in seconds (proposed policy).
+          schema:
+            type: integer
+            minimum: 1
+          example: 30
     Healthy:
       description: Healthy, without component details
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/Health' }
+          schema:
+            $ref: '#/components/schemas/Health'
     Unhealthy:
       description: Not healthy or not ready; no sensitive details
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/Health' }
+          schema:
+            $ref: '#/components/schemas/Health'

@@ -1,6 +1,8 @@
 # Local setup
 
-Status: **implemented foundation runbook**; business MVP is **proposed** in
+Backend MVP đã có code nhưng PostgreSQL integration chưa kiểm chứng.
+Hướng dẫn BE đầy đủ: [runbook](../backend/runbook.md), [API examples](../backend/api-examples.md).
+Trạng thái hợp đồng `implemented-unverified` trong
 [OpenAPI](../../contracts/openapi.proposed.yaml), trips are **deferred**. For documentation/
 contract-only checks use the existing scripts environment:
 `scripts/.venv/Scripts/python.exe scripts/check_contracts.py` (POSIX `.venv/bin/python`).
@@ -25,8 +27,10 @@ if (!(Test-Path infra/.env)) { Copy-Item infra/.env.example infra/.env }
 docker compose --env-file infra/.env -f infra/compose.yaml up -d --wait
 $env:DB_URL = 'jdbc:postgresql://localhost:5432/rideguard'
 $env:DB_USER = 'rideguard'
-$env:DB_PASSWORD = '<same local password>'
-apps/backend/mvnw.cmd -f apps/backend/pom.xml -B verify
+# Cấp DB_PASSWORD, JWT_SIGNING_KEY, CURSOR_SIGNING_KEY theo runbook, không dùng literal placeholder.
+# TEST_DB_URL/USER/PASSWORD phải là database test riêng nếu muốn chạy integration.
+apps/backend/mvnw.cmd -f apps/backend/pom.xml -B test
+# verify thêm integration; thiếu TEST_DB_URL thì SKIPPED, không phải DB pass.
 apps/backend/mvnw.cmd -f apps/backend/pom.xml spring-boot:run
 ```
 

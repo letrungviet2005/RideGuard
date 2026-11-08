@@ -55,17 +55,19 @@ jobs:
       postgres:
         image: postgres:17.11-alpine
         env:
-          POSTGRES_DB: rideguard
+          POSTGRES_DB: rideguard_test
           POSTGRES_USER: rideguard
           POSTGRES_PASSWORD: ci-only-ephemeral-password
         ports: ['5432:5432']
         options: >-
-          --health-cmd "pg_isready -U rideguard -d rideguard"
+          --health-cmd "pg_isready -U rideguard -d rideguard_test"
           --health-interval 5s --health-timeout 3s --health-retries 10
     env:
-      DB_URL: jdbc:postgresql://localhost:5432/rideguard
-      DB_USER: rideguard
-      DB_PASSWORD: ci-only-ephemeral-password
+      TEST_DB_URL: jdbc:postgresql://localhost:5432/rideguard_test
+      TEST_MIGRATION_DB_URL: jdbc:postgresql://localhost:5432/rideguard_migration_test
+      TEST_DB_USER: rideguard
+      TEST_DB_PASSWORD: ci-only-ephemeral-password
+      DEBUG: "false"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -74,6 +76,10 @@ jobs:
           java-version: '21'
           cache: maven
           cache-dependency-path: apps/backend/pom.xml
+      - name: Create separate migration test database
+        env:
+          PGPASSWORD: ${{ env.TEST_DB_PASSWORD }}
+        run: psql -h localhost -U rideguard -d rideguard_test -v ON_ERROR_STOP=1 -c "CREATE DATABASE rideguard_migration_test OWNER rideguard"
       - run: bash ./mvnw -B -ntp verify
         working-directory: apps/backend
   admin:

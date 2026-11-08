@@ -1,9 +1,11 @@
-# REST MVP — proposed, chưa triển khai
+# REST MVP — đã có integration và runtime smoke
 
-Nguồn chuẩn: [openapi.proposed.yaml](../../contracts/openapi.proposed.yaml), 31 operations
-trên 26 paths, đầy đủ DTO/examples/errors. Chỉ [openapi.yaml](../../contracts/openapi.yaml)
-mô tả **implemented** (ba health endpoint). Backend hiện chặn nghiệp vụ; security code
-không đổi. Mọi ví dụ proposed là minh họa, không là dữ liệu thật/kiểm chứng phần cứng.
+Nguồn chuẩn: [openapi.yaml](../../contracts/openapi.yaml), 31 nghiệp vụ cùng 3 health;
+[bản MVP đối chiếu](../../contracts/openapi.proposed.yaml) giữ riêng 31 operations.
+Ngày 2026-11-09 đã chạy integration PostgreSQL và HTTP smoke; trạng thái
+`integration-and-runtime-smoke-tested` ghi phạm vi/status thực tế, không mọi nhánh lỗi. Ví dụ là minh họa,
+không là dữ liệu thật/kiểm chứng phần cứng. [ADR0003](../decisions/0003-backend-mvp.md),
+[runbook](../backend/runbook.md), [verification](../testing/verification-status.md).
 
 ## Quy ước
 
@@ -16,13 +18,12 @@ password không bao giờ trim/normalize/truncate. Không nhận user_id/role/st
 toàn vẹn, gắn caller/route/filter/sort; sai/giả mạo trả 400. Sort thiết bị/binding theo
 bound_at DESC và binding UUID DESC; list còn lại created_at DESC/id DESC, session dùng
 family_id ổn định. Không offset; không cam kết snapshot isolation giữa nhiều trang.
-Body mutation tối đa 32 KiB decoded UTF-8; quá mức 413. Rate limit cấu hình được, chưa có code.
+Body mutation tối đa 32 KiB decoded UTF-8; quá mức 413. Rate limit per-IP/process cấu hình được, mặc định120/phút; không là limiter phân tán.
 
-Error proposed `{status,code,message,request_id}`: request_id UUID do server sinh. 400
+Error hiện tại `{status,code,message,request_id}`: request_id UUID do server sinh. 400
 validation/cursor;401 token/session bị thu hồi/hết hạn/account khóa;403 thiếu ADMIN hoặc
 Origin/CSRF sai;404 tài nguyên riêng tư không có/không thuộc caller;409 conflict;413 size;
-429 Retry-After;500 lỗi chung;503 tạm thời. Không lộ SQL/stack trace/chủ khác. Error code
-implemented hiện **chưa có request_id**; không sửa DTO hiện hành để giả vờ đã khớp proposed.
+429 Retry-After;500 lỗi chung;503 tạm thời. Không lộ SQL/stack trace/chủ khác. Error code hiện có request_id server sinh, header X-Request-ID; không log body auth/secret.
 
 ## API MVP (mọi path có tiền tố /api/v1)
 
@@ -48,7 +49,7 @@ GET sessions không trả token/hash; session_id là family UUID ổn định qu
 Reset token một lần 15 phút; forgot-password 202 chung; reset revoke tất cả phiên; đổi mật
 khẩu với current_password revoke các phiên khác. Không có admin/password mặc định.
 
-JWT proposed access 15 phút, refresh family tối đa 30 ngày từ login, không sliding. Kiểm
+JWT access 15 phút, refresh family tối đa 30 ngày từ login, không sliding. Kiểm
 tra session/account mỗi request, không chỉ chữ ký JWT. X-Client-Type=mobile/admin_web bắt
 buộc ở login/refresh/logout. Mobile nhận access_token/refresh_token/token_type/expires_in/user;
 refresh/logout body có refresh_token, không dùng cookie. Web trả cùng thông tin trừ refresh
@@ -58,7 +59,7 @@ Web branch cần ADMIN; header chọn transport không tự cấp quyền.
 OpenAPI có oneOf/examples hai client và Set-Cookie. Refresh/logout `{}` security alternative
 chỉ là biểu diễn **mobile body-auth** mà OpenAPI không có securityScheme tương ứng, không
 cho anonymous access; xem x-authentication-required/x-token-transport. CORS/SameSite/CSRF
-phụ thuộc origin cần chốt, chưa cấu hình. [Authentication flow](../flows/authentication.md).
+đã có code và HTTP slice tests; exact origins do môi trường cấp, triển khai thật cần kiểm chứng. [Authentication flow](../flows/authentication.md). Admin tự khóa/khóa admin ACTIVE cuối bị409.
 
 ## Devices, configuration, reporting
 
@@ -67,14 +68,14 @@ không mật khẩu/proof. Bind request serial_number + nickname optional, Idemp
 ACTIVE chưa owner 201; đã thuộc caller/replay hợp lệ 200, nickname không tự đổi; owner khác
 409 DEVICE_UNAVAILABLE; serial lạ/DISABLED/RETIRED 404 DEVICE_NOT_AVAILABLE. Replay binding
 đã đóng 409 BINDING_NO_LONGER_ACTIVE, không bind lại. Transaction/row lock/partial unique.
-Unbind giữ lịch sử; retry 204 chỉ khi chưa có binding mới và bản vừa đóng thuộc caller;
-owner khác 404. PATCH chỉ nickname 1–60 sau trim hoặc null để xóa. Device DTO có id/binding_id/
+Unbind giữ lịch sử; query expected_binding_id UUID bắt buộc. Chỉ đóng binding đúng
+caller/device; retry bản đã đóng204 và không tác động binding mới. Sai caller/device404. PATCH chỉ nickname 1–60 sau trim hoặc null để xóa. Device DTO có id/binding_id/
 serial_number/nickname/model/hardware_revision/status/latest_report. [Binding flow](../flows/device-binding.md).
 
 Config theo binding, schema_version 1, desired bắt đầu 1/applied=null; PATCH expected_version
 và settings không rỗng, không If-Match. Omitted giữ nguyên, null/unknown bị từ chối.
-brightness integer 0–100/vibration boolean; không ngưỡng risk/master disable. Flag rung chỉ
-preference tín hiệu không trọng yếu, không tắt cảnh báo cốt lõi; policy ưu tiên cần duyệt.
+brightness integer 0–100/vibration boolean; không ngưỡng risk/master disable. vibration_enabled=false
+tắt cơ cấu rung; HUD và xử lý nguy cơ vẫn hoạt động. Không chỉnh threshold AI/master-disable.
 Wrong version 409 VERSION_CONFLICT. ACK binding_id/applied phải là active owned binding và
 issued version<=desired; ACK cũ/lặp thành công, không giảm applied. ACK chỉ mobile báo lại,
 không attestation. Không sửa offline; server lưu nhưng chưa BLE ACK → chờ đồng bộ.
@@ -114,8 +115,7 @@ Feedback replay kiểm tra own feedback, không đòi binding cũ còn active.
 Full response cache 7 ngày sau thành công. Để retry bind cũ không tạo lại sau expiry, giữ
 minimal key/hash/resource tombstone trong đời binding/feedback; expired key 409
 IDEMPOTENCY_KEY_EXPIRED, riêng binding đóng ưu tiên BINDING_NO_LONGER_ACTIVE. Không xóa marker
-rồi coi retry như thao tác mới. Retention marker/account erasure cần duyệt; đây là đề xuất
-bổ sung để đáp ứng ràng buộc stale retry. DB constraints vẫn bắt buộc.
+rồi coi retry như thao tác mới. Code giữ marker, cleanup chỉ xóa response hết7 ngày; account erasure vẫn cần chính sách. DB constraints vẫn bắt buộc.
 
 Retry bounded/backoff/jitter cho network/429/503/5xx tạm thời, tôn trọng Retry-After, cùng
 key cho cùng thao tác. Refresh single-flight một lần cho chuỗi access hết hạn; session

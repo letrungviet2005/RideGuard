@@ -76,7 +76,7 @@
     "battery_percent"
   ],
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Device status report v1 — proposed",
+  "title": "Device status report v1 — PostgreSQL integration and REST smoke tested; hardware unverified",
   "description": "REST v1 mobile report, not hardware attestation or real-time online status. All fields required; unavailable firmware/battery use null. Server receives within [received_at-24h, received_at+5min]; stale/equal observations do not replace newer ones. No radar/IMU samples or GPS.",
   "examples": [
     {

@@ -1,5 +1,8 @@
 # ADR 0001 — independent foundations in one repository
 
+Ghi chú lịch sử: phần backend/hợp đồng bị thay thế tương ứng bởi [ADR0003](0003-backend-mvp.md);
+không dùng mô tả “chưa có code” dưới đây làm hiện trạng mới.
+
 Status: accepted bootstrap, 2026-11-06; business scope/database portion superseded by
 [ADR0002](0002-mvp-scope.md). Local safety pipeline and independent builds remain accepted.
 

@@ -8,6 +8,24 @@ spring:
     password: ${DB_PASSWORD}
     hikari:
       connection-timeout: 3000
+      connection-init-sql: SET TIME ZONE 'UTC'
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+    deserialization:
+      fail-on-unknown-properties: true
+      accept-float-as-int: false
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${SMTP_AUTH:true}
+      mail.smtp.starttls.enable: ${SMTP_STARTTLS:true}
+      mail.smtp.starttls.required: ${SMTP_STARTTLS:true}
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 5000
+      mail.smtp.writetimeout: 5000
   flyway:
     enabled: true
 server:
@@ -16,6 +34,10 @@ server:
     include-message: never
     include-stacktrace: never
 management:
+  health:
+    mail:
+      # Optional asynchronous reset delivery must not gate API/database health.
+      enabled: false
   endpoints:
     web:
       exposure:
@@ -30,3 +52,19 @@ management:
           include: livenessState
         readiness:
           include: readinessState,db
+
+rideguard:
+  jwt-key: ${JWT_SIGNING_KEY}
+  cursor-key: ${CURSOR_SIGNING_KEY}
+  allowed-origins: ${ADMIN_ALLOWED_ORIGINS:}
+  cookie-secure: ${COOKIE_SECURE:true}
+  cookie-same-site: ${COOKIE_SAME_SITE:Lax}
+  mail-from: ${SMTP_FROM:noreply@localhost}
+  rate-limit-per-minute: ${RATE_LIMIT_PER_MINUTE:120}
+  reports-retention-days: ${REPORTS_RETENTION_DAYS:30}
+
+logging:
+  level:
+    org.springframework.web: INFO
+    org.springframework.security: INFO
+    org.springframework.mail: WARN

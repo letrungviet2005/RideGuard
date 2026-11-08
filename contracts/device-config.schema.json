@@ -54,8 +54,8 @@
     "settings"
   ],
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Device configuration v1 — proposed",
-  "description": "Proposed MVP snapshot. Applied version must reference an issued version on this binding and never exceed desired_version (service/DB invariant). Vibration preference cannot disable core safety warnings; firmware precedence needs approval.",
+  "title": "Device configuration v1 — PostgreSQL integration and REST smoke tested; hardware unverified",
+  "description": "Binding-scoped issued versions; applied <= desired. vibration_enabled=false disables the vibration actuator; HUD and risk processing remain active. No master-disable or AI threshold. Firmware anti-rollback is a contract requirement, not implemented hardware evidence.",
   "examples": [
     {
       "binding_id": "00000000-0000-4000-8000-000000000003",

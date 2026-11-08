@@ -1,12 +1,11 @@
-# Configuration sync — proposed MVP
+# Configuration sync — backend code, BLE chưa triển khai
 
 [Schema](../../contracts/device-config.schema.json), [REST](../../contracts/openapi.proposed.yaml).
-Chưa có controller/BLE apply. Config gắn binding, new binding có schema_version 1,
-desired_version 1, applied=null, proposed defaults brightness 70/vibration=true.
+Đã có backend controller/service/repository; PostgreSQL integration và BLE apply chưa kiểm chứng. Config gắn binding, new binding có schema_version 1,
+desired_version 1, applied=null, defaults brightness 70/vibration=true.
 
-Settings chỉ display_brightness integer 0–100, vibration_enabled boolean. Flag rung chỉ
-preference tín hiệu không trọng yếu, không tắt HUD/rung cảnh báo cốt lõi; firmware ưu tiên
-an toàn và ánh sáng thấp cần duyệt. Giá trị brightness chưa là PWM/pin cụ thể. Không mở
+Settings chỉ display_brightness integer 0–100, vibration_enabled boolean. vibration_enabled=false tắt cơ cấu rung; HUD và pipeline nguy cơ vẫn hoạt động.
+Không có master-disable/threshold AI. Policy ánh sáng thấp cần duyệt. Giá trị brightness chưa là PWM/pin cụ thể. Không mở
 ngưỡng risk hoặc master-disable.
 
 1. Mobile online GET rồi PATCH expected_version + settings patch không rỗng. Omitted giữ
@@ -16,7 +15,10 @@ ngưỡng risk hoặc master-disable.
    Wrong version 409 VERSION_CONFLICT, registry không ACTIVE 409 DEVICE_NOT_ACTIVE.
 3. Server trả snapshot; mobile gửi BLE protocol/schema/binding/desired/settings. BLE
    chưa có → UI chờ đồng bộ. Server save không bằng ESP32 apply.
-4. ESP32 validate compatibility và thực sự apply trước ACK binding/version/command_id;
+4. Hợp đồng ESP32: cùng binding không apply version thấp hơn; cùng version/cùng nội dung ACK lại;
+   cùng version/khác nội dung lỗi. Binding mới thiết lập riêng, không so version giữa binding.
+   Firmware chưa triển khai quy tắc này; backend ACK monotonic không chứng minh anti-rollback phần cứng.
+   ESP32 validate compatibility và thực sự apply trước ACK binding/version/command_id;
    lỗi giữ applied cũ, không ACK giả. Core risk không phụ thuộc Internet/auth.
 5. Mobile REST ACK binding_id/reported_applied_version sau BLE ACK thật.
 

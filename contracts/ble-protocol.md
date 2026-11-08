@@ -21,8 +21,9 @@ timeouts are mandatory when implemented.
   local receive TTL alone cannot detect time already spent in the phone queue. Deduplicate/reject
   out-of-order sequence within session; new navigation session after reconnect.
 - Mobile → ESP32 configuration: command_id, binding_id, schema_version=1, desired_version,
-  full settings from [config schema](device-config.schema.json). Same binding/version with
-  different settings rejected; wrong binding/version cannot be silently accepted. Persisted
+  full settings from [config schema](device-config.schema.json). Cùng binding không apply version thấp hơn
+  version đang dùng; cùng version/cùng nội dung ACK lại; cùng version/khác nội dung lỗi.
+  Binding mới thiết lập riêng, không so version giữa hai binding. Đây là hợp đồng, chưa có firmware code. Persisted
   binding-context reset on rebind and pairing authorization require approval; they are not
   cryptographic proof of ownership in this MVP.
 - ESP32 → mobile config ACK: command_id, binding_id, reported_applied_version only after real
@@ -30,6 +31,7 @@ timeouts are mandatory when implemented.
   command returns prior result; old ACK cannot lower applied. Reconnect queries binding/applied
   before retry. Mobile REST ACK carries binding_id/reported_applied_version; server confirms
   issued version, but this remains a mobile assertion, not hardware attestation.
+  Backend monotonic ACK không chứng minh firmware đã chống rollback.
 - ESP32 → mobile diagnostics: firmware_version nullable, radar/imu/display/vibration status
   OK/ERROR/UNAVAILABLE/UNKNOWN, battery_percent integer 0–100 or null. Do not infer OK from BLE
   connected; unknown/unavailable/fault/stale internal radar samples do not map to OK. The
@@ -39,8 +41,8 @@ timeouts are mandatory when implemented.
   replace local HUD/rung or declare a missing signal SAFE.
 
 Settings display_brightness 0–100/vibration_enabled are logical preferences, no guessed GPIO
-or PWM. Vibration flag must not suppress mandatory core warnings; priority and low-brightness
-policy require approval. Mobile cannot edit config offline; save backend first, BLE apply,
+or PWM. vibration_enabled=false tắt cơ cấu rung; HUD và xử lý nguy cơ vẫn hoạt động.
+Không master-disable hoặc threshold AI. Low-brightness policy cần duyệt. Mobile cannot edit config offline; save backend first, BLE apply,
 then REST ACK. No BLE → pending, not applied. See [flow](../docs/flows/configuration-sync.md).
 
 ## Clock ownership

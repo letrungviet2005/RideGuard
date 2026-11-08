@@ -1,5 +1,63 @@
 # Verification status
 
+## 2026-11-09 — PostgreSQL integration và runtime đã chạy
+
+**27 test độc lập + 15 integration đạt, 0 failure/error/skipped** ở lần verify cuối.
+Lần đầu có 1 failure health do SMTP tùy chọn; đã sửa cấu hình và chạy lại, không bỏ assertion.
+CLI tạo ADMIN, 69 HTTP requests bao phủ 31 API nghiệp vụ, SMTP sink reset và restart đạt.
+Không đồng nghĩa đã thử mọi nhánh lỗi/browser HTTPS/email thật/phần cứng.
+[Báo cáo đầy đủ](backend-verification-2026-11-09.md) ghi từng test, operation/status và lệnh.
+Các mục 2026-11-08 dưới đây là bằng chứng lịch sử, không phải trạng thái mới nhất.
+
+## 2026-11-08 — kiểm chứng lại lúc 18:49 +07:00
+
+Đã chạy lại Maven `verify`: **27 PASS, 0 failure/error; 15 integration SKIPPED**.
+Docker Engine vẫn không sẵn sàng; chưa tìm thấy PostgreSQL local ở các vị trí/cổng đã kiểm tra.
+Runtime, CLI admin và SMTP chưa thực hiện. Không thay đổi trạng thái verified của API.
+Xem [báo cáo chi tiết và tên từng test](backend-reverification-2026-11-08.md).
+
+## 2026-11-08 — backend MVP: code, unit tests; PostgreSQL integration chưa chạy
+
+Đã viết31 API nghiệp vụ, V2 migration10 bảng, HTTP/auth/ownership/config/reports/feedback/admin,
+SMTP adapter và CLI provisioning. Không dùng mock thay implementation production. [Hiện trạng](../backend/current-state.md).
+
+Đã chạy trên JDK21 portable và Maven Wrapper3.9.11:
+
+```powershell
+.\apps\backend\mvnw.cmd -f apps/backend/pom.xml -B -ntp verify
+.\scripts\.venv\Scripts\python.exe scripts/check_contracts.py
+git diff --check
+```
+
+Maven: **BUILD SUCCESS**, JAR packaged; **27 tests pass**: ContractRulesTest9,
+SecurityHttpTest9, ServiceRulesTest8, ValidationTest1. Kiểm tra DTO/Unicode/unknown fields,
+Argon2, JWT signature/expiry, cursor tamper/scope, HTTP 400/401/403/404/405/413/415,
+CORS/CSRF/mobile-web transport, config/report service guards, stale-unbind target và refresh
+reuse commit-before-401 bằng mock transaction manager. Mock repo/service không chứng minh SQL/concurrency.
+
+**15 integration tests SKIPPED**: FoundationIT2, MvpIT12, MigrationIT1, vì chưa cấp TEST_DB_URL/
+TEST_MIGRATION_DB_URL. Docker daemon không sẵn sàng và localhost5432 không nghe tại lần kiểm tra đầu;
+không tự bật Docker Desktop, không khởi động DB/backend, không chạy migration, không dùng H2.
+Một lần verify ban đầu lộ lỗi test guard kế thừa; đã sửa annotation trực tiếp ở các integration class,
+không nới guard database `_test`, không báo lần đó là pass. Hiện test compile nhưng chưa chạy SQL.
+
+Contract checker: 34 operations (3 health + 31 code-unverified), 434 example validations,
+32 negative cases và 129 local Markdown links. Đã đối chiếu 31 path/method trong controller với
+OpenAPI proposed. Đây là kiểm tra tĩnh schema/ref/example/mapping, không phải bằng chứng chạy DB/BLE.
+V1 được giữ nguyên, không clean/repair/baseline. CI backend dùng hai database test riêng; chưa chạy hosted CI.
+
+Chưa kiểm chứng: PostgreSQL upgrade/FK/locking/races/cleanup, full runtime HTTP, SMTP delivery thực,
+console admin thật, browser cookies/CORS qua HTTPS, hiệu năng Argon2/load, hardware/BLE/ML.
+Mọi runbook/API examples là hướng dẫn chưa thực thi, response examples là minh họa.
+Không sửa source Android/admin-web/firmware, không STL/CAD, không commit/push/deploy.
+
+Phải chạy integration theo [runbook](../backend/runbook.md) trước khi promote OpenAPI:
+31 operation vẫn `implemented-unverified` trong openapi.proposed.yaml, health giữ bằng chứng lịch sử.
+Runtime secrets do người vận hành cấp; reset mail queue không durable, rate limiter per-process.
+
+---
+
+
 ## 2026-11-07 — static MVP contract/document update
 
 Status: **implemented foundation unchanged; proposed MVP contracts checked statically;

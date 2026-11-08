@@ -37,21 +37,22 @@ Không tạo thư mục rỗng cho nghiệp vụ chưa có mã. Trách nhiệm t
 
 ## Trạng thái
 
-- **Implemented:** backend khởi động, PostgreSQL/Flyway migration nền tảng, health probes,
-  security deny-by-default, API error/validation infrastructure và integration checks.
+- **Backend đã qua integration và local runtime smoke:** 31 API MVP, V2 migration 10 bảng,
+  JWT/session, JDBC transactions, config/reports/feedback/admin. 27 test độc lập + 15 integration đạt;
+  CLI admin và SMTP sink đạt, email ngoài/browser HTTPS chưa thử.
+  [Runbook BE](docs/backend/runbook.md), [hiện trạng](docs/backend/current-state.md).
 - **Implemented:** admin router/layout/API client/config URL; mobile Compose foundation,
   navigation và cấu hình môi trường. Không có dữ liệu hay kết nối thiết bị giả.
 - **Implemented:** firmware startup log, chọn decoder khi build, dữ liệu optional/unavailable;
   Python package/chia phiên/tests; hợp đồng, CI và tài liệu nhóm.
-- **Proposed MVP:** auth/users/devices/binding history/config/reports/feedback/admin, BLE,
-  navigation, radar + IMU/HUD/rung/tracking/risk và nghiên cứu ML nhẹ. Database có bảy bảng
-  nghiệp vụ cộng ba bảng kỹ thuật, tất cả mới là thiết kế.
+- **Proposed phần thiết bị:** BLE/navigation, radar + IMU/HUD/rung/tracking/risk và ML nhẹ.
+  Backend có code nhưng chưa khẳng định client/firmware tương thích.
 - **Deferred:** hành trình/GPS recording, Room trip queue, BLE possession proof, OTA,
   payment/sharing. [Roadmap](docs/roadmap.md) phân biệt rõ với GPS navigation và lịch sử binding.
 
 Dev bắt đầu ở [API MVP giải thích](docs/api/proposed-api.md) và
-[OpenAPI proposed](contracts/openapi.proposed.yaml). [OpenAPI implemented](contracts/openapi.yaml)
-chỉ health; không xem proposed là API đang chạy. Màn hình mobile foundation còn copy nhắc
+[OpenAPI implemented](contracts/openapi.yaml) gồm 3 health và 31 API MVP, có trạng thái/phạm vi kiểm thử từng operation.
+[Bằng chứng](docs/testing/backend-verification-2026-11-09.md). Màn hình mobile foundation còn copy nhắc
 hành trình của thiết kế cũ; chưa sửa source UI trong nhiệm vụ tài liệu này.
 
 Mỗi thành phần có README riêng và build độc lập: [backend](apps/backend/README.md),
@@ -72,7 +73,7 @@ Windows thay `./mvnw` bằng `./mvnw.cmd`, `./gradlew` bằng `./gradlew.bat`.
 # root: copy infra/.env.example to infra/.env and set a local-only password first
 docker compose --env-file infra/.env -f infra/compose.yaml up -d --wait
 
-# apps/backend (export DB_PASSWORD matching PostgreSQL first)
+# apps/backend: đọc docs/backend/runbook.md, cấp DB_PASSWORD và hai signing keys trước
 ./mvnw spring-boot:run
 ./mvnw -B verify
 
@@ -105,7 +106,7 @@ Chi tiết PowerShell, biến môi trường, hostname, contracts check và xử
 Không có kiểm thử trên ESP32/cảm biến/motor/TFT; không giả định radar xuyên lớp phản xạ
 gương hoặc ID radar ổn định. Chưa chốt radar, IMU, pin map, nguồn, giao thức BLE/security,
 deployment origins/CSRF, provisioning và retention. Token transport đã có đề xuất riêng
-cho mobile/web nhưng chưa triển khai. Không có tài khoản mặc định; API nghiệp vụ bị chặn.
+cho mobile/web và đã triển khai backend. Không có tài khoản mặc định; API nghiệp vụ yêu cầu Bearer/quyền tương ứng.
 Vite URL là cấu hình công khai trong bundle, không chứa secret. Không có API vị trí/hành
 trình trong MVP. Không commit dữ liệu lớn, GPS cá nhân hay log nhạy cảm.
 

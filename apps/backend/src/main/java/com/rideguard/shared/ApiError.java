@@ -1,3 +1,5 @@
 package com.rideguard.shared;
 
-public record ApiError(int status, String code, String message) {}
+import java.util.UUID;
+
+public record ApiError(int status, String code, String message, UUID requestId) {}

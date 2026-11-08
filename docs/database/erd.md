@@ -1,6 +1,6 @@
-# ERD MVP — proposed
+# ERD MVP — V2 có code, database chưa kiểm chứng
 
-[Schema chi tiết](schema.md): 7 bảng nghiệp vụ và 3 kỹ thuật, chưa có migration nghiệp vụ.
+[Schema chi tiết](schema.md): 7 bảng nghiệp vụ và 3 kỹ thuật, migration V2 đã có, chưa thực thi integration PostgreSQL.
 
 ```mermaid
 erDiagram

@@ -1,35 +1,33 @@
 # RideGuard backend
 
-Java 21 / Spring Boot 3.5.16 / Maven wrapper 3.9.11. Use `com.rideguard` feature packages:
-auth, users, devices (bindings/config/reports), feedback, shared; only shared infrastructure exists now.
-See [architecture](../../docs/architecture/system-overview.md) for planned responsibilities.
+Java 21, Spring Boot 3.5.16, Maven Wrapper 3.9.11; Spring MVC/Security/JDBC,
+PostgreSQL 17.11 và Flyway. Giữ JDBC, không JPA/H2.
 
-Start PostgreSQL using [local setup](../../docs/development/local-setup.md), export
-DB_PASSWORD (and optionally DB_URL/DB_USER), then from this directory:
+Đã có code cho 31 API MVP: auth/users/sessions, registry/binding/history, config/version/ACK,
+reports, feedback/admin. V1 giữ nguyên; V2 thêm 10 bảng trong schema `rideguard`.
+**Chưa kiểm chứng integration PostgreSQL/SMTP thật trong lần triển khai này.**
+Unit/HTTP slice test không thay thế database/concurrency test.
 
-```sh
-./mvnw spring-boot:run
-./mvnw -B verify
-java -jar target/backend-0.1.0-SNAPSHOT.jar
+- [Runbook](../../docs/backend/runbook.md): cấu hình, PostgreSQL, build/test/run và tạo admin.
+- [Ví dụ API](../../docs/backend/api-examples.md): register đến feedback.
+- [Troubleshooting](../../docs/backend/troubleshooting.md).
+- [Hiện trạng](../../docs/backend/current-state.md) và [bằng chứng kiểm thử](../../docs/testing/verification-status.md).
+- [Hợp đồng MVP](../../contracts/openapi.proposed.yaml): `implemented-unverified`, chưa promote sang verified contract.
+
+Từ gốc repository (PowerShell; các lệnh hướng dẫn chưa chạy dịch vụ):
+
+```powershell
+.\apps\backend\mvnw.cmd -f apps/backend/pom.xml -B test
+.\apps\backend\mvnw.cmd -f apps/backend/pom.xml -B verify
+.\apps\backend\mvnw.cmd -f apps/backend/pom.xml spring-boot:run
+java -jar apps/backend/target/backend-0.1.0-SNAPSHOT.jar
 ```
 
-Windows uses `./mvnw.cmd`. Verify needs PostgreSQL: it runs startup/Flyway/API checks,
-not an H 2 substitute. JAR packaging is part of verify. Build artifacts stay in target/.
-`.env.example` is a reference; Spring does not auto-load `.env`. No credentials are embedded.
+`test` chỉ unit/slice; `verify` thêm integration nếu có `TEST_DB_URL/USER/PASSWORD` riêng.
+Thiếu TEST_DB_URL thì integration được ghi SKIPPED, không phải pass. Chạy dịch vụ cần DB_PASSWORD,
+JWT_SIGNING_KEY, CURSOR_SIGNING_KEY; `.env` không tự nạp. Xem runbook trước khi chạy.
 
-GET `/actuator/health/liveness` checks process, `/actuator/health/readiness` includes DB.
-Aggregate `/actuator/health` includes DB and public group names. No sensitive details.
-Startup fails if required datasource/Flyway cannot initialize; after startup a DB outage
-must make readiness 503 while liveness remains 200. Other routes deny access; CSRF is on.
-Only health is public, no default user, no JWT/CRUD. `{status,code,message}` errors are
-used by security and MVC validation handlers. No arbitrary CORS origins allowed yet;
-choose exact admin origin when implementing auth. Feature validation uses Jakarta Bean
-Validation once DTOs exist. Migration V1 creates schema only; seven business plus three technical
-tables are proposed in [database design](../../docs/database/schema.md); no business migration added.
-
-**Proposed:** [MVP OpenAPI](../../contracts/openapi.proposed.yaml) and
-[API explanation](../../docs/api/proposed-api.md). Snake_case/UUID/errors with request_id,
-mobile body refresh versus web cookie refresh, ownership/idempotency, config issued-version
-ACK and reports are design only. Current error DTO has no request_id and current security
-is unchanged. JWT/access 15min/refresh family 30days are not implemented. Trips/GPS recording
-and proof challenges are [deferred](../../docs/roadmap.md). Static contract checking needs no DB.
+Health public: liveness không DB, readiness có DB. Nghiệp vụ dùng Bearer và kiểm account/session;
+admin bắt buộc ADMIN. Web auth dùng strict Origin/custom CSRF header + cookie, mobile dùng JSON refresh.
+Không admin/password mặc định; không token reset trong API/log. Không trips/proof/OTA/inference server.
+Firmware, Android và admin UI chưa được sửa hay xác nhận tương thích.

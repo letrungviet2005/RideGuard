@@ -22,7 +22,10 @@ REST account expiry and server registry status must not disable core warnings. B
 navigation cue/distance/TTL, binding-scoped config/version, ACK and hardware status metadata,
 not trips or possession challenge. [BLE contract](../contracts/ble-protocol.md) is logical
 proposed v0.2, not implemented. Pending config is not applied; battery remains null until
-measurement hardware is verified. Vibration preference cannot suppress mandatory warnings.
+measurement hardware is verified. Hợp đồng mới: vibration_enabled=false tắt cơ cấu rung, HUD/risk vẫn chạy.
+Cùng binding không apply version thấp hơn; cùng version/cùng nội dung ACK lại; cùng version/khác
+nội dung lỗi. Binding mới có thiết lập riêng, không so version giữa binding. Chưa triển khai
+firmware anti-rollback; backend ACK monotonic không chứng minh phần cứng đã làm việc này.
 Direction-change versus straight-line rear-approach policies need approval; IMU cannot
 know turn intent and same-side motion alone is insufficient. See [AI design](../ai/README.md).
 See [architecture](../docs/architecture/system-overview.md) for planned modules (IMU/display/

@@ -158,7 +158,7 @@ def check_openapi(path, proposed=False):
             COUNTS["operations"] += 1
             if not proposed:
                 continue
-            assert op["x-status"] == "proposed"
+            assert op["x-status"] in {"proposed", "implemented-unverified", "integration-and-runtime-smoke-tested"}
             security = op.get("security", spec.get("security"))
             if oid in public:
                 assert security == [], oid
@@ -198,6 +198,9 @@ def check_openapi(path, proposed=False):
         for route, method in (("/api/v1/devices/bind", "post"), ("/api/v1/feedbacks", "post")):
             assert any(p["name"] == "Idempotency-Key" and p["required"]
                        for p in spec["paths"][route][method]["parameters"])
+        unbind = spec["paths"]["/api/v1/devices/{device_id}/binding"]["delete"]
+        assert any(p["name"] == "expected_binding_id" and p["required"] and p["in"] == "query"
+                   for p in unbind["parameters"])
         schemas = spec["components"]["schemas"]
         for route in ("/api/v1/auth/login", "/api/v1/auth/refresh"):
             media = spec["paths"][route]["post"]["responses"]["200"]["content"]["application/json"]
@@ -209,7 +212,13 @@ def check_openapi(path, proposed=False):
             validate_example(schemas["WebRefreshRequest"], media["examples"]["admin_web"]["value"], "web cookie body shape")
     else:
         expected = {(p, "get") for p in ("/actuator/health", "/actuator/health/liveness", "/actuator/health/readiness")}
-        assert operations == expected, "Future endpoints added to implemented contract"
+        expected |= expected_operations()
+        assert operations == expected, "Implemented contract must match health and MVP routes"
+        for route, method in expected_operations():
+            op = spec["paths"][route][method]
+            assert op["x-status"] == "integration-and-runtime-smoke-tested"
+            assert op["x-runtime-tested-statuses"]
+            assert op["x-verification"]["evidence"] == "docs/testing/backend-verification-2026-11-09.md"
     print(f"Validated {path.name}: {len(operations)} operations and all local refs")
     return spec
 
@@ -267,6 +276,29 @@ def check_markdown_links():
     print(f"Validated {COUNTS['local_links']} local Markdown file links (not external URLs/anchors)")
 
 
+def check_backend_routes(spec):
+    """Compare source mappings; this is NOT evidence of PostgreSQL runtime behavior."""
+    def normalize(route):
+        return re.sub(r"\{[^}]+\}", "{}", route)
+
+    expected = {(method.upper(), normalize(route))
+                for route, entry in spec["paths"].items()
+                for method, op in entry.items()
+                if method in METHODS and op.get("x-status") in {
+                    "implemented-unverified", "integration-and-runtime-smoke-tested"}}
+    if not expected:
+        return
+    actual = set()
+    for path in (REPO / "apps/backend/src/main/java").rglob("*Controller.java"):
+        source = path.read_text(encoding="utf-8")
+        prefix = re.search(r'@RequestMapping\("([^"]+)"\)', source)
+        prefix = prefix.group(1) if prefix else ""
+        for method, route in re.findall(r'@(Get|Post|Patch|Delete)Mapping\("([^"]+)"\)', source):
+            actual.add((method.upper(), normalize(prefix + route)))
+    assert actual == expected, (actual - expected, expected - actual)
+    print(f"Validated {len(actual)} backend source route mappings (not runtime integration)")
+
+
 def main():
     for path in sorted(ROOT.glob("*.schema.json")):
         schema = expand(load(path), path)
@@ -277,8 +309,11 @@ def main():
         invalid["schema_version" if "schema_version" in schema.get("properties", {}) else "unknown_field"] = 999
         reject(schema, invalid, f"{path.name} invalid version/unknown property")
         print(f"Validated {path.name}")
-    check_openapi(ROOT / "openapi.yaml")
+    implemented = check_openapi(ROOT / "openapi.yaml")
     proposed = check_openapi(ROOT / "openapi.proposed.yaml", proposed=True)
+    for route, entry in proposed["paths"].items():
+        assert implemented["paths"][route] == entry, "MVP mirror differs from implemented contract"
+    check_backend_routes(proposed)
     negative_cases(proposed)
     check_markdown_links()
     print("PASS " + json.dumps(COUNTS, sort_keys=True))

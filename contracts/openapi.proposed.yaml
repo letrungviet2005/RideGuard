@@ -1,16 +1,11 @@
 openapi: 3.1.0
 jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 info:
-  title: RideGuard MVP REST — PROPOSED / NOT IMPLEMENTED
-  version: 0.2.0
-  description: Design contract only. Deployed/implemented health API is separately defined in openapi.yaml. All
-    paths here are unavailable in current code. JSON UTF-8, snake_case, UUID IDs, UTC RFC3339 Z timestamps, null
-    for missing data; no trips, GPS recording, BLE proof, OTA or inference endpoints. Protected requests check session
-    revocation/account status, not JWT signature alone. Examples are synthetic, not evidence of real devices. Normalize
-    documented strings before validation; never transform passwords. Business errors include request_id here; current
-    code error format remains unchanged. Maximum mutation body 32 KiB decoded UTF-8. Pagination default 20/max100,
-    stable sort, integrity-protected caller/filter-scoped cursors. Configurable rate limits and retry policy are
-    proposed, not installed.
+  title: RideGuard MVP — integration and local runtime smoke tested
+  version: 0.4.0
+  description: '31 API đã có code, integration PostgreSQL và local runtime smoke ngày 2026-11-09. Hợp đồng sử dụng
+    chính: openapi.yaml. Bản này giữ riêng phần MVP để đối chiếu thiết kế; không phải tính năng chưa triển khai.
+    Không tuyên bố mọi nhánh lỗi, browser HTTPS hoặc ESP32 đã được kiểm chứng.'
 servers:
 - url: /
   description: Relative host only; no deployed business API or production origin is claimed. Paths include /api/v1.
@@ -18,19 +13,19 @@ security:
 - bearerAuth: []
 tags:
 - name: auth
-  description: PROPOSED MVP auth
+  description: MVP implemented auth
 - name: users
-  description: PROPOSED MVP users
+  description: MVP implemented users
 - name: devices
-  description: PROPOSED MVP devices
+  description: MVP implemented devices
 - name: configuration
-  description: PROPOSED MVP configuration
+  description: MVP implemented configuration
 - name: reports
-  description: PROPOSED MVP reports
+  description: MVP implemented reports
 - name: feedback
-  description: PROPOSED MVP feedback
+  description: MVP implemented feedback
 - name: admin
-  description: PROPOSED MVP admin
+  description: MVP implemented admin
 paths:
   /api/v1/auth/register:
     post:
@@ -38,9 +33,9 @@ paths:
       tags:
       - auth
       summary: Register USER account
-      description: 'PROPOSED — not implemented. Server assigns USER/ACTIVE. Duplicate normalized email: 409 EMAIL_UNAVAILABLE.
-        Does not log in; call login. No default admin account.'
-      x-status: proposed
+      description: 'Server assigns USER/ACTIVE. Duplicate normalized email: 409 EMAIL_UNAVAILABLE. Does not log
+        in; call login. No default admin account.'
+      x-status: integration-and-runtime-smoke-tested
       responses:
         '201':
           description: Success
@@ -56,6 +51,13 @@ paths:
                 status: ACTIVE
                 created_at: '2026-11-06T03:00:00Z'
                 updated_at: '2026-11-06T03:00:00Z'
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
         '400':
           $ref: '#/components/responses/Error400'
         '409':
@@ -82,16 +84,23 @@ paths:
               full_name: Việt
               password: Example-only-password-2026
         x-max-decoded-bytes: 32768
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 201
   /api/v1/auth/login:
     post:
       operationId: login
       tags:
       - auth
       summary: Log in using client-specific token transport
-      description: 'PROPOSED — not implemented. Access TTL 900s; session absolute lifetime <=30 days. admin_web
-        requires ADMIN and trusted Origin/CSRF header; creates HttpOnly Secure refresh cookie, never body refresh
-        token. Bad credentials/locked user: generic 401.'
-      x-status: proposed
+      description: 'Access TTL 900s; session absolute lifetime <=30 days. admin_web requires ADMIN and trusted Origin/CSRF
+        header; creates HttpOnly Secure refresh cookie, never body refresh token. Bad credentials/locked user: generic
+        401.'
+      x-status: integration-and-runtime-smoke-tested
       responses:
         '200':
           description: Success
@@ -140,6 +149,12 @@ paths:
                 type: string
                 const: no-store
               example: no-store
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -171,16 +186,24 @@ paths:
               password: Example-only-password-2026
               client_name: Android phone
         x-max-decoded-bytes: 32768
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
+      - 403
   /api/v1/auth/refresh:
     post:
       operationId: refresh
       tags:
       - auth
       summary: Rotate refresh token
-      description: PROPOSED — not implemented. Body-auth mobile or cookie-auth admin_web, never anonymous. Atomic
-        single-use rotation within original absolute expiry (not sliding). Replay revokes entire family. Check account/session
-        on every use; web branch requires ADMIN.
-      x-status: proposed
+      description: Body-auth mobile or cookie-auth admin_web, never anonymous. Atomic single-use rotation within
+        original absolute expiry (not sliding). Replay revokes entire family. Check account/session on every use;
+        web branch requires ADMIN.
+      x-status: integration-and-runtime-smoke-tested
       responses:
         '200':
           description: Success
@@ -229,6 +252,12 @@ paths:
                 type: string
                 const: no-store
               example: no-store
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -270,16 +299,26 @@ paths:
               admin_web:
                 value: {}
         x-max-decoded-bytes: 32768
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
+      - 400
+      - 401
+      - 403
   /api/v1/auth/logout:
     post:
       operationId: logout
       tags:
       - auth
       summary: Revoke current session family
-      description: PROPOSED — not implemented. Revoke family identified by body/cookie credential; clear cookie
-        for web. Repeated logout with same identifiable retired credential returns 204 within retention; unknown
-        credential 401. Does not require an unexpired access token.
-      x-status: proposed
+      description: Revoke family identified by body/cookie credential; clear cookie for web. Repeated logout with
+        same identifiable retired credential returns 204 within retention; unknown credential 401. Does not require
+        an unexpired access token.
+      x-status: integration-and-runtime-smoke-tested
       responses:
         '204':
           description: Success
@@ -289,6 +328,12 @@ paths:
               schema:
                 type: string
               example: rg_refresh=; Max-Age=0; HttpOnly; Secure; Path=/api/v1/auth; SameSite=Lax
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -330,15 +375,24 @@ paths:
               admin_web:
                 value: {}
         x-max-decoded-bytes: 32768
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 204
   /api/v1/auth/forgot-password:
     post:
       operationId: forgotPassword
       tags:
       - auth
       summary: Request password reset without account disclosure
-      description: PROPOSED — not implemented. Same generic 202/body for valid existing/nonexistent/locked email;
-        avoid timing enumeration. Reset token expires in 15min; rate limits configurable.
-      x-status: proposed
+      description: 'Đã có code; chưa kiểm chứng SMTP thật. 202/body chung cho email hợp lệ: đưa tác vụ vào queue
+        bounded trong process trước khi lookup account. SMTP adapter gửi reset code trong email, không API/log.
+        Queue đầy: 503 cho mọi email; worker lỗi rollback token mới và log thông báo chung. Queue không bền qua
+        crash; người dùng có thể yêu cầu lại.'
+      x-status: integration-and-runtime-smoke-tested
       responses:
         '202':
           description: Success
@@ -348,6 +402,13 @@ paths:
                 $ref: '#/components/schemas/Message'
               example:
                 message: Nếu tài khoản phù hợp tồn tại, hướng dẫn khôi phục sẽ được gửi.
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
         '400':
           $ref: '#/components/responses/Error400'
         '413':
@@ -370,19 +431,32 @@ paths:
             example:
               email: viet@example.invalid
         x-max-decoded-bytes: 32768
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 202
   /api/v1/auth/reset-password:
     post:
       operationId: resetPassword
       tags:
       - auth
       summary: Consume reset token and revoke all sessions
-      description: 'PROPOSED — not implemented. One-use hashed token, 15min expiry. Invalid/expired/used token:
-        400 INVALID_RESET_TOKEN. Atomic password update and revoke all families; reset does not unlock a locked
-        account.'
-      x-status: proposed
+      description: 'One-use hashed token, 15min expiry. Invalid/expired/used token: 400 INVALID_RESET_TOKEN. Atomic
+        password update and revoke all families; reset does not unlock a locked account.'
+      x-status: integration-and-runtime-smoke-tested
       responses:
         '204':
           description: Success
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
         '400':
           $ref: '#/components/responses/Error400'
         '413':
@@ -406,14 +480,22 @@ paths:
               reset_token: synthetic-reset-token-not-a-real-secret
               new_password: Example-only-new-password-2026
         x-max-decoded-bytes: 32768
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 204
+      - 400
   /api/v1/users/me:
     get:
       operationId: getProfile
       tags:
       - users
       summary: Read own profile
-      description: 'PROPOSED — not implemented. '
-      x-status: proposed
+      description: ''
+      x-status: integration-and-runtime-smoke-tested
       responses:
         '200':
           description: Success
@@ -429,6 +511,13 @@ paths:
                 status: ACTIVE
                 created_at: '2026-11-06T03:00:00Z'
                 updated_at: '2026-11-06T03:00:00Z'
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -441,13 +530,21 @@ paths:
           $ref: '#/components/responses/Error500'
         '503':
           $ref: '#/components/responses/Error503'
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
+      - 401
     patch:
       operationId: updateProfile
       tags:
       - users
       summary: Update own full name only
-      description: PROPOSED — not implemented. Email, user_id, role and status are forbidden request properties.
-      x-status: proposed
+      description: Email, user_id, role and status are forbidden request properties.
+      x-status: integration-and-runtime-smoke-tested
       responses:
         '200':
           description: Success
@@ -463,6 +560,13 @@ paths:
                 status: ACTIVE
                 created_at: '2026-11-06T03:00:00Z'
                 updated_at: '2026-11-06T03:00:00Z'
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -488,18 +592,32 @@ paths:
             example:
               full_name: Việt
         x-max-decoded-bytes: 32768
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
   /api/v1/users/me/change-password:
     post:
       operationId: changePassword
       tags:
       - users
       summary: Change password and revoke other sessions
-      description: 'PROPOSED — not implemented. Wrong current_password: 400 CURRENT_PASSWORD_INVALID. Revoke all
-        other session families; current family remains within original expiry.'
-      x-status: proposed
+      description: 'Wrong current_password: 400 CURRENT_PASSWORD_INVALID. Revoke all other session families; current
+        family remains within original expiry.'
+      x-status: integration-and-runtime-smoke-tested
       responses:
         '204':
           description: Success
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -526,15 +644,21 @@ paths:
               current_password: Example-only-password-2026
               new_password: Example-only-new-password-2026
         x-max-decoded-bytes: 32768
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 204
   /api/v1/users/me/sessions:
     get:
       operationId: listSessions
       tags:
       - users
       summary: List own active logical sessions without tokens
-      description: PROPOSED — not implemented. Sort (created_at DESC, family_id DESC); rotation does not create
-        a new displayed session.
-      x-status: proposed
+      description: Sort (created_at DESC, family_id DESC); rotation does not create a new displayed session.
+      x-status: integration-and-runtime-smoke-tested
       responses:
         '200':
           description: Success
@@ -552,6 +676,13 @@ paths:
                   expires_at: '2026-12-06T03:00:00Z'
                   is_current: true
                 next_cursor: null
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -567,18 +698,32 @@ paths:
       parameters:
       - $ref: '#/components/parameters/Limit'
       - $ref: '#/components/parameters/Cursor'
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
   /api/v1/users/me/sessions/{session_id}:
     delete:
       operationId: revokeSession
       tags:
       - users
       summary: Revoke own session family
-      description: PROPOSED — not implemented. session_id is stable family UUID. Unknown/foreign 404; already revoked
-        own family 204 while retained. Revoking current family invalidates its access token immediately.
-      x-status: proposed
+      description: session_id is stable family UUID. Unknown/foreign 404; already revoked own family 204 while retained.
+        Revoking current family invalidates its access token immediately.
+      x-status: integration-and-runtime-smoke-tested
       responses:
         '204':
           description: Success
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -595,15 +740,22 @@ paths:
           $ref: '#/components/responses/Error503'
       parameters:
       - $ref: '#/components/parameters/session_id'
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 204
   /api/v1/devices:
     get:
       operationId: listDevices
       tags:
       - devices
       summary: List devices with own active binding
-      description: PROPOSED — not implemented. Sort (bound_at DESC, binding_id DESC). Includes disabled/retired
-        owned devices when no filter; does not expose other users or old-binding reports.
-      x-status: proposed
+      description: Sort (bound_at DESC, binding_id DESC). Includes disabled/retired owned devices when no filter;
+        does not expose other users or old-binding reports.
+      x-status: integration-and-runtime-smoke-tested
       responses:
         '200':
           description: Success
@@ -622,6 +774,13 @@ paths:
                   status: ACTIVE
                   latest_report: null
                 next_cursor: null
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -646,14 +805,21 @@ paths:
           - DISABLED
           - RETIRED
         description: Optional server status filter, not physical health.
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
   /api/v1/devices/{device_id}:
     get:
       operationId: getDevice
       tags:
       - devices
       summary: Read own currently bound device
-      description: 'PROPOSED — not implemented. '
-      x-status: proposed
+      description: ''
+      x-status: integration-and-runtime-smoke-tested
       responses:
         '200':
           description: Success
@@ -670,6 +836,13 @@ paths:
                 hardware_revision: null
                 status: ACTIVE
                 latest_report: null
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -686,14 +859,21 @@ paths:
           $ref: '#/components/responses/Error503'
       parameters:
       - $ref: '#/components/parameters/device_id'
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
+      - 404
     patch:
       operationId: renameDevice
       tags:
       - devices
       summary: Change current binding nickname only
-      description: PROPOSED — not implemented. String after trim 1–60 characters, null clears. No ownership, serial
-        or status updates.
-      x-status: proposed
+      description: String after trim 1–60 characters, null clears. No ownership, serial or status updates.
+      x-status: integration-and-runtime-smoke-tested
       responses:
         '200':
           description: Success
@@ -710,6 +890,13 @@ paths:
                 hardware_revision: null
                 status: ACTIVE
                 latest_report: null
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -739,20 +926,27 @@ paths:
             example:
               nickname: Gương xe của Việt
         x-max-decoded-bytes: 32768
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
   /api/v1/devices/bind:
     post:
       operationId: bindDevice
       tags:
       - devices
       summary: Bind preregistered serial
-      description: 'PROPOSED — not implemented. Transaction + device row lock + partial unique active binding. Unowned
-        ACTIVE device: 201. Already owned by caller or valid replay: 200, nickname unchanged. Other owner: 409 DEVICE_UNAVAILABLE,
-        no owner detail. Unknown/disabled/retired: 404 DEVICE_NOT_AVAILABLE. Closed original binding replay: 409
-        BINDING_NO_LONGER_ACTIVE, even after same user rebinds. Serial is not physical possession proof. Full cached
-        response retention is 7 days; minimal key/hash/resource marker persists for resource lifetime to prevent
-        stale recreation. Expired valid key: 409 IDEMPOTENCY_KEY_EXPIRED; in-progress concurrent request: 409 IDEMPOTENCY_IN_PROGRESS.
-        See proposed-api.md for retention approval.'
-      x-status: proposed
+      description: 'Transaction + device row lock + partial unique active binding. Unowned ACTIVE device: 201. Already
+        owned by caller or valid replay: 200, nickname unchanged. Other owner: 409 DEVICE_UNAVAILABLE, no owner
+        detail. Unknown/disabled/retired: 404 DEVICE_NOT_AVAILABLE. Closed original binding replay: 409 BINDING_NO_LONGER_ACTIVE,
+        even after same user rebinds. Serial is not physical possession proof. Full cached response retention is
+        7 days; minimal key/hash/resource marker persists for resource lifetime to prevent stale recreation. Expired
+        valid key: 409 IDEMPOTENCY_KEY_EXPIRED; in-progress concurrent request: 409 IDEMPOTENCY_IN_PROGRESS. See
+        proposed-api.md for retention approval.'
+      x-status: integration-and-runtime-smoke-tested
       responses:
         '201':
           description: Success
@@ -769,6 +963,13 @@ paths:
                 hardware_revision: null
                 status: ACTIVE
                 latest_report: null
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -788,6 +989,13 @@ paths:
                     code: DEVICE_NOT_AVAILABLE
                     message: Không thể hoàn tất yêu cầu.
                     request_id: 00000000-0000-4000-8000-000000000001
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
         '409':
           description: State, version or idempotency conflict.
           content:
@@ -825,6 +1033,13 @@ paths:
                     code: IDEMPOTENCY_IN_PROGRESS
                     message: Thao tác cần được đối chiếu lại trước khi tiếp tục.
                     request_id: 00000000-0000-4000-8000-000000000001
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
         '413':
           $ref: '#/components/responses/Error413'
         '429':
@@ -848,6 +1063,13 @@ paths:
                 hardware_revision: null
                 status: ACTIVE
                 latest_report: null
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
       parameters:
       - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -862,21 +1084,34 @@ paths:
               serial_number: RG-000001
               nickname: Gương xe của Việt
         x-max-decoded-bytes: 32768
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
+      - 201
   /api/v1/devices/{device_id}/binding:
     delete:
       operationId: unbindDevice
       tags:
       - devices
       summary: Close own binding, retain history
-      description: 'PROPOSED — not implemented. Set unbound_at. Retry 204 only if no newer binding exists and the
-        most recently closed binding is provably caller''s. New foreign binding or inaccessible resource: 404. An
-        intentional later unbind targets the then-current own binding; no history deletion. With a new binding owned
-        by the same caller, this route has no expected-binding precondition: a stale DELETE cannot be distinguished
-        from a new unbind. Mobile must cancel retries after rebind; stronger preconditions are deferred.'
-      x-status: proposed
+      description: 'Đã có code; chưa kiểm chứng PostgreSQL. expected_binding_id bắt buộc. Đúng caller/device: đóng
+        nếu active, retry binding đã đóng trả 204. Không tác động binding mới. Sai caller/device hoặc không tồn
+        tại: 404.'
+      x-status: integration-and-runtime-smoke-tested
       responses:
         '204':
           description: Success
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -893,15 +1128,31 @@ paths:
           $ref: '#/components/responses/Error503'
       parameters:
       - $ref: '#/components/parameters/device_id'
+      - name: expected_binding_id
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Chỉ đóng đúng binding này, đúng device và caller. Binding đã đóng vẫn trả 204; không ảnh hưởng
+          binding mới.
+        example: 00000000-0000-4000-8000-000000000003
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 204
   /api/v1/device-bindings:
     get:
       operationId: listBindings
       tags:
       - devices
       summary: List own binding history
-      description: PROPOSED — not implemented. Sort (bound_at DESC,id DESC). History is ownership history, not trip
-        history; no subsequent owner identity.
-      x-status: proposed
+      description: Sort (bound_at DESC,id DESC). History is ownership history, not trip history; no subsequent owner
+        identity.
+      x-status: integration-and-runtime-smoke-tested
       responses:
         '200':
           description: Success
@@ -921,6 +1172,13 @@ paths:
                   unbound_at: null
                   status: ACTIVE
                 next_cursor: null
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -950,14 +1208,21 @@ paths:
           type: string
           format: uuid
         description: Optional device filter; still scoped to caller.
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
   /api/v1/devices/{device_id}/config:
     get:
       operationId: getDeviceConfig
       tags:
       - configuration
       summary: Read current binding desired/applied config
-      description: 'PROPOSED — not implemented. '
-      x-status: proposed
+      description: ''
+      x-status: integration-and-runtime-smoke-tested
       responses:
         '200':
           description: Success
@@ -973,6 +1238,13 @@ paths:
                 settings:
                   display_brightness: 70
                   vibration_enabled: true
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -989,16 +1261,24 @@ paths:
           $ref: '#/components/responses/Error503'
       parameters:
       - $ref: '#/components/parameters/device_id'
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
+      - 404
     patch:
       operationId: updateDeviceConfig
       tags:
       - configuration
       summary: Compare-and-set desired settings
-      description: 'PROPOSED — not implemented. expected_version only, no If-Match. Nonempty settings patch; absent
-        fields unchanged, null/unknown rejected. Atomic increment + immutable issued version record. Wrong expected_version:
-        409 VERSION_CONFLICT; non-ACTIVE device: 409 DEVICE_NOT_ACTIVE. No offline edit, risk thresholds or master
-        warning disable. vibration_enabled cannot suppress mandatory core alerts; precedence needs approval.'
-      x-status: proposed
+      description: 'expected_version only, no If-Match. Nonempty settings patch; absent fields unchanged, null/unknown
+        rejected. Atomic increment + immutable issued version record. Wrong expected_version: 409 VERSION_CONFLICT;
+        non-ACTIVE device: 409 DEVICE_NOT_ACTIVE. No offline edit, risk thresholds or master warning disable. vibration_enabled=false
+        tắt cơ cấu rung; HUD và xử lý nguy cơ vẫn hoạt động. Không có master-disable hoặc ngưỡng AI.'
+      x-status: integration-and-runtime-smoke-tested
       responses:
         '200':
           description: Success
@@ -1014,6 +1294,13 @@ paths:
                 settings:
                   display_brightness: 80
                   vibration_enabled: true
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -1041,6 +1328,13 @@ paths:
                     code: DEVICE_NOT_ACTIVE
                     message: Không thể hoàn tất yêu cầu.
                     request_id: 00000000-0000-4000-8000-000000000001
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
         '413':
           $ref: '#/components/responses/Error413'
         '429':
@@ -1065,17 +1359,25 @@ paths:
                 display_brightness: 80
                 vibration_enabled: true
         x-max-decoded-bytes: 32768
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
+      - 409
   /api/v1/devices/{device_id}/config/ack:
     post:
       operationId: ackDeviceConfig
       tags:
       - configuration
       summary: Report BLE application ACK
-      description: PROPOSED — not implemented. Check current owned binding (foreign/closed/mismatch 404); require
-        issued binding-scoped version <= desired (else 409 CONFIG_VERSION_NOT_ISSUED). Store max(previous, incoming);
-        old/duplicate valid ACK succeeds, never decreases applied. Mobile assertion, no hardware cryptographic proof.
-        ACK allowed even if server device status changed, without issuing new config.
-      x-status: proposed
+      description: Check current owned binding (foreign/closed/mismatch 404); require issued binding-scoped version
+        <= desired (else 409 CONFIG_VERSION_NOT_ISSUED). Store max(previous, incoming); old/duplicate valid ACK
+        succeeds, never decreases applied. Mobile assertion, no hardware cryptographic proof. ACK allowed even if
+        server device status changed, without issuing new config.
+      x-status: integration-and-runtime-smoke-tested
       responses:
         '200':
           description: Success
@@ -1091,6 +1393,13 @@ paths:
                 settings:
                   display_brightness: 70
                   vibration_enabled: true
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -1112,6 +1421,13 @@ paths:
                     code: CONFIG_VERSION_NOT_ISSUED
                     message: Không thể hoàn tất yêu cầu.
                     request_id: 00000000-0000-4000-8000-000000000001
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
         '413':
           $ref: '#/components/responses/Error413'
         '429':
@@ -1134,17 +1450,25 @@ paths:
               binding_id: 00000000-0000-4000-8000-000000000003
               reported_applied_version: 2
         x-max-decoded-bytes: 32768
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
+      - 404
   /api/v1/devices/{device_id}/reports:
     post:
       operationId: reportDeviceStatus
       tags:
       - reports
       summary: Submit bounded hardware-status metadata observed by mobile
-      description: 'PROPOSED — not implemented. Current owned binding only; serialize against binding. observed_at
-        from mobile, received_at from server. Allow received_at-24h <= observed_at <= received_at+5min; outside:
-        400 OBSERVED_AT_OUT_OF_RANGE. Strictly newer observation accepted=true; older/equal valid observation accepted=false
-        (200), never replaces latest. BLE link alone cannot imply OK. Not real-time online; no raw sensor/GPS upload.'
-      x-status: proposed
+      description: 'Current owned binding only; serialize against binding. observed_at from mobile, received_at
+        from server. Allow received_at-24h <= observed_at <= received_at+5min; outside: 400 OBSERVED_AT_OUT_OF_RANGE.
+        Strictly newer observation accepted=true; older/equal valid observation accepted=false (200), never replaces
+        latest. BLE link alone cannot imply OK. Not real-time online; no raw sensor/GPS upload.'
+      x-status: integration-and-runtime-smoke-tested
       responses:
         '200':
           description: Success
@@ -1161,6 +1485,13 @@ paths:
                   value:
                     accepted: false
                     received_at: '2026-11-06T03:00:02Z'
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -1197,19 +1528,27 @@ paths:
               vibration_status: UNKNOWN
               battery_percent: null
         x-max-decoded-bytes: 32768
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
+      - 404
   /api/v1/feedbacks:
     post:
       operationId: createFeedback
       tags:
       - feedback
       summary: Create own feedback
-      description: 'PROPOSED — not implemented. device_id explicitly null or currently owned. Store binding context
-        at creation; later unbind does not hide own feedback or transfer it. Client cannot set status/admin_response.
-        Valid replay 200; different normalized payload 409 IDEMPOTENCY_CONFLICT. No attachments. Full cached response
-        retention is 7 days; minimal key/hash/resource marker persists for resource lifetime to prevent stale recreation.
-        Expired valid key: 409 IDEMPOTENCY_KEY_EXPIRED; in-progress concurrent request: 409 IDEMPOTENCY_IN_PROGRESS.
-        See proposed-api.md for retention approval.'
-      x-status: proposed
+      description: 'device_id explicitly null or currently owned. Store binding context at creation; later unbind
+        does not hide own feedback or transfer it. Client cannot set status/admin_response. Valid replay 200; different
+        normalized payload 409 IDEMPOTENCY_CONFLICT. No attachments. Full cached response retention is 7 days; minimal
+        key/hash/resource marker persists for resource lifetime to prevent stale recreation. Expired valid key:
+        409 IDEMPOTENCY_KEY_EXPIRED; in-progress concurrent request: 409 IDEMPOTENCY_IN_PROGRESS. See proposed-api.md
+        for retention approval.'
+      x-status: integration-and-runtime-smoke-tested
       responses:
         '201':
           description: Success
@@ -1226,6 +1565,13 @@ paths:
                 admin_response: null
                 created_at: '2026-11-06T03:00:00Z'
                 responded_at: null
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -1259,6 +1605,13 @@ paths:
                     code: IDEMPOTENCY_IN_PROGRESS
                     message: Thao tác cần được đối chiếu lại trước khi tiếp tục.
                     request_id: 00000000-0000-4000-8000-000000000001
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
         '413':
           $ref: '#/components/responses/Error413'
         '429':
@@ -1283,6 +1636,13 @@ paths:
                 admin_response: null
                 created_at: '2026-11-06T03:00:00Z'
                 responded_at: null
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
       parameters:
       - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -1298,13 +1658,20 @@ paths:
               category: SUGGESTION
               content: Đề nghị làm rõ trạng thái chờ đồng bộ.
         x-max-decoded-bytes: 32768
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 201
     get:
       operationId: listFeedback
       tags:
       - feedback
       summary: List own feedback
-      description: PROPOSED — not implemented. Sort (created_at DESC,id DESC).
-      x-status: proposed
+      description: Sort (created_at DESC,id DESC).
+      x-status: integration-and-runtime-smoke-tested
       responses:
         '200':
           description: Success
@@ -1323,6 +1690,13 @@ paths:
                   created_at: '2026-11-06T03:00:00Z'
                   responded_at: null
                 next_cursor: null
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -1362,14 +1736,21 @@ paths:
           type: string
           format: uuid
         description: Optional device association filter; never bypasses ownership.
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
   /api/v1/feedbacks/{feedback_id}:
     get:
       operationId: getFeedback
       tags:
       - feedback
       summary: Read own feedback and admin response
-      description: 'PROPOSED — not implemented. '
-      x-status: proposed
+      description: ''
+      x-status: integration-and-runtime-smoke-tested
       responses:
         '200':
           description: Success
@@ -1386,6 +1767,13 @@ paths:
                 admin_response: null
                 created_at: '2026-11-06T03:00:00Z'
                 responded_at: null
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -1402,14 +1790,21 @@ paths:
           $ref: '#/components/responses/Error503'
       parameters:
       - $ref: '#/components/parameters/feedback_id'
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
   /api/v1/admin/users:
     get:
       operationId: adminListUsers
       tags:
       - admin
       summary: List users (ADMIN required)
-      description: PROPOSED — not implemented. Sort (created_at DESC,id DESC). Never returns password/session tokens.
-      x-status: proposed
+      description: Sort (created_at DESC,id DESC). Never returns password/session tokens.
+      x-status: integration-and-runtime-smoke-tested
       responses:
         '200':
           description: Success
@@ -1427,6 +1822,13 @@ paths:
                   created_at: '2026-11-06T03:00:00Z'
                   updated_at: '2026-11-06T03:00:00Z'
                 next_cursor: null
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -1466,16 +1868,24 @@ paths:
           - USER
           - ADMIN
         description: Role filter, not assignment.
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
+      - 403
   /api/v1/admin/users/{user_id}/status:
     patch:
       operationId: adminSetUserStatus
       tags:
       - admin
       summary: Lock or unlock account (ADMIN required)
-      description: PROPOSED — not implemented. LOCKED atomically revokes all session families; subsequent requests
-        fail immediately, not after JWT expiry. ACTIVE does not resurrect revoked sessions. No role change. Self-lock
-        allowed and revokes caller too; admin recovery/provisioning policy must be approved.
-      x-status: proposed
+      description: Đã có code; chưa kiểm chứng PostgreSQL. LOCKED revoke mọi phiên; ACTIVE không hồi sinh phiên.
+        409 ADMIN_SELF_LOCK khi tự khóa, 409 LAST_ADMIN khi khóa admin ACTIVE cuối. Khóa advisory transaction để
+        tuần tự hóa thao tác admin.
+      x-status: integration-and-runtime-smoke-tested
       responses:
         '200':
           description: Success
@@ -1491,6 +1901,13 @@ paths:
                 status: LOCKED
                 created_at: '2026-11-06T03:00:00Z'
                 updated_at: '2026-11-06T03:00:00Z'
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -1507,6 +1924,17 @@ paths:
           $ref: '#/components/responses/Error500'
         '503':
           $ref: '#/components/responses/Error503'
+        '409':
+          description: Admin lock protection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                status: 409
+                code: ADMIN_SELF_LOCK
+                message: Access denied
+                request_id: 00000000-0000-4000-8000-000000000001
       x-required-role: ADMIN
       parameters:
       - $ref: '#/components/parameters/user_id'
@@ -1521,15 +1949,22 @@ paths:
             example:
               status: LOCKED
         x-max-decoded-bytes: 32768
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
   /api/v1/admin/devices:
     post:
       operationId: adminCreateDevice
       tags:
       - admin
       summary: Preregister unique serial (ADMIN required)
-      description: 'PROPOSED — not implemented. Server assigns ACTIVE. Duplicate canonical serial: 409 SERIAL_ALREADY_REGISTERED;
-        unique DB constraint. Does not create a binding. No hardware secret fields.'
-      x-status: proposed
+      description: 'Server assigns ACTIVE. Duplicate canonical serial: 409 SERIAL_ALREADY_REGISTERED; unique DB
+        constraint. Does not create a binding. No hardware secret fields.'
+      x-status: integration-and-runtime-smoke-tested
       responses:
         '201':
           description: Success
@@ -1546,6 +1981,13 @@ paths:
                 created_at: '2026-11-06T03:00:00Z'
                 updated_at: '2026-11-06T03:00:00Z'
                 active_binding_id: null
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -1576,13 +2018,20 @@ paths:
               model: RideGuard prototype
               hardware_revision: null
         x-max-decoded-bytes: 32768
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 201
     get:
       operationId: adminListDevices
       tags:
       - admin
       summary: List registered devices (ADMIN required)
-      description: PROPOSED — not implemented. Sort (created_at DESC,id DESC). No owner transfer or location history.
-      x-status: proposed
+      description: Sort (created_at DESC,id DESC). No owner transfer or location history.
+      x-status: integration-and-runtime-smoke-tested
       responses:
         '200':
           description: Success
@@ -1601,6 +2050,13 @@ paths:
                   updated_at: '2026-11-06T03:00:00Z'
                   active_binding_id: 00000000-0000-4000-8000-000000000003
                 next_cursor: null
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -1633,16 +2089,23 @@ paths:
           - DISABLED
           - RETIRED
         description: Server device status filter.
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
   /api/v1/admin/devices/{device_id}/status:
     patch:
       operationId: adminSetDeviceStatus
       tags:
       - admin
       summary: Change registry status (ADMIN required)
-      description: PROPOSED — not implemented. ACTIVE <-> DISABLED; either may become RETIRED; RETIRED terminal
-        (same status no-op, reversal 409 INVALID_STATUS_TRANSITION). Binding history retained. Status gates bind/config
-        edits only; not an ESP32 shutdown command; warnings remain local.
-      x-status: proposed
+      description: ACTIVE <-> DISABLED; either may become RETIRED; RETIRED terminal (same status no-op, reversal
+        409 INVALID_STATUS_TRANSITION). Binding history retained. Status gates bind/config edits only; not an ESP32
+        shutdown command; warnings remain local.
+      x-status: integration-and-runtime-smoke-tested
       responses:
         '200':
           description: Success
@@ -1659,6 +2122,13 @@ paths:
                 created_at: '2026-11-06T03:00:00Z'
                 updated_at: '2026-11-06T03:00:00Z'
                 active_binding_id: 00000000-0000-4000-8000-000000000003
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -1691,14 +2161,21 @@ paths:
             example:
               status: DISABLED
         x-max-decoded-bytes: 32768
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
   /api/v1/admin/feedbacks:
     get:
       operationId: adminListFeedback
       tags:
       - admin
       summary: List feedback for handling (ADMIN required)
-      description: PROPOSED — not implemented. Sort (created_at DESC,id DESC). No GPS/attachments.
-      x-status: proposed
+      description: Sort (created_at DESC,id DESC). No GPS/attachments.
+      x-status: integration-and-runtime-smoke-tested
       responses:
         '200':
           description: Success
@@ -1719,6 +2196,13 @@ paths:
                   user_id: 00000000-0000-4000-8000-000000000001
                   binding_id: 00000000-0000-4000-8000-000000000003
                 next_cursor: null
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -1765,16 +2249,23 @@ paths:
           type: string
           format: uuid
         description: Admin-only author filter; no self-service impersonation.
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
   /api/v1/admin/feedbacks/{feedback_id}:
     patch:
       operationId: adminUpdateFeedback
       tags:
       - admin
       summary: Set feedback status/response (ADMIN required)
-      description: PROPOSED — not implemented. Any OPEN/IN_PROGRESS/RESOLVED transition allowed, including reopen.
-        Only status/admin_response writable; response timestamp is server time when response changes. Omitted fields
-        unchanged, null rejected; empty patch rejected.
-      x-status: proposed
+      description: Any OPEN/IN_PROGRESS/RESOLVED transition allowed, including reopen. Only status/admin_response
+        writable; response timestamp is server time when response changes. Omitted fields unchanged, null rejected;
+        empty patch rejected.
+      x-status: integration-and-runtime-smoke-tested
       responses:
         '200':
           description: Success
@@ -1793,6 +2284,13 @@ paths:
                 responded_at: '2026-11-06T03:00:00Z'
                 user_id: 00000000-0000-4000-8000-000000000001
                 binding_id: 00000000-0000-4000-8000-000000000003
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID
+              schema:
+                type: string
+                format: uuid
+              example: 00000000-0000-4000-8000-000000000001
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -1824,6 +2322,13 @@ paths:
               status: IN_PROGRESS
               admin_response: Đã tiếp nhận phản hồi.
         x-max-decoded-bytes: 32768
+      x-verification:
+        date: '2026-11-09'
+        evidence: docs/testing/backend-verification-2026-11-09.md
+        scope: PostgreSQL integration suite and local HTTP smoke; listed statuses only. SMTP sink, not external
+          delivery. No browser HTTPS or hardware certification.
+      x-runtime-tested-statuses:
+      - 200
 components:
   securitySchemes:
     bearerAuth:
