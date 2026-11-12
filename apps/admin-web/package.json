@@ -8,10 +8,15 @@
   },
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
     "lint": "eslint .",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview --host 127.0.0.1"
+    "preview": "vite preview --host 127.0.0.1",
+    "api:generate": "node scripts/generate-api.mjs",
+    "api:check": "node scripts/generate-api.mjs --check",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "test:ui": "npm run build && playwright test",
+    "format": "prettier --write src scripts tests playwright.config.ts"
   },
   "dependencies": {
     "react": "19.3.1",
@@ -20,14 +25,20 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@playwright/test": "^1.65.0",
+    "@types/node": "^26.6.6",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
     "@vitejs/plugin-react": "5.1.0",
     "eslint": "10.14.0",
     "globals": "16.5.0",
+    "openapi-typescript": "^7.13.0",
+    "prettier": "^3.9.10",
+    "tsx": "^4.23.15",
     "typescript": "5.9.3",
     "typescript-eslint": "8.72.1",
-    "vite": "7.3.7"
+    "vite": "7.3.7",
+    "yaml": "^2.9.1"
   },
   "overrides": {
     "minimatch": "11.0.1",

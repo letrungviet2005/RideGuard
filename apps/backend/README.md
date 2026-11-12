@@ -1,5 +1,9 @@
 # RideGuard backend
 
+Máy này dùng PostgreSQL Windows tại `127.0.0.1:5433`. Chạy từ gốc repo:
+`.\scripts\run-backend-local.ps1`; tạo ADMIN lần đầu bằng cờ `-ProvisionAdmin`.
+Xem [thiết lập PostgreSQL local](../../docs/backend/postgresql-local.md) trước khi chạy.
+
 Java 21, Spring Boot 3.5.16, Maven Wrapper 3.9.11; Spring MVC/Security/JDBC,
 PostgreSQL 17.11 và Flyway. Giữ JDBC, không JPA/H2.
 

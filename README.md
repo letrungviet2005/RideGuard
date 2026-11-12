@@ -1,5 +1,10 @@
 # RideGuard
 
+**Tiến độ tổng quan:** [báo cáo dự án ngày 12/11/2026](docs/tien-do-du-an.md).
+
+**Chạy dự án trên máy Windows:** xem [hướng dẫn khởi chạy BE + FE](docs/huong-dan-chay-du-an.md)
+(PostgreSQL local, tạo tài khoản ADMIN, lệnh chạy và xử lý lỗi).
+
 Nền tảng monorepo cho gương chiếu hậu thông minh xe máy. Đây là bộ khung phát triển,
 không phải sản phẩm cảnh báo đã kiểm chứng an toàn hoặc đã thử phần cứng.
 

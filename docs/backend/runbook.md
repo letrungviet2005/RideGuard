@@ -1,5 +1,10 @@
 # Runbook backend RideGuard
 
+**Máy phát triển hiện tại dùng PostgreSQL 18 cài trực tiếp trên Windows, port 5433.**
+Làm theo [hướng dẫn PostgreSQL local](postgresql-local.md) để tạo database/user và chạy
+`.\scripts\run-backend-local.ps1`. Không cần bật Docker Desktop. Các lệnh Compose bên dưới
+là lựa chọn cho máy dùng PostgreSQL container; không chạy song song để thay thế DB local.
+
 Ngày 2026-11-09 đã chạy PostgreSQL integration, CLI admin, HTTP runtime và SMTP sink.
 [Báo cáo thực tế](../testing/backend-verification-2026-11-09.md) ghi lệnh và phạm vi kiểm chứng.
 Các ví dụ bên dưới là quy trình để chạy lại; SMTP nhà cung cấp, browser HTTPS và phần cứng chưa kiểm chứng.

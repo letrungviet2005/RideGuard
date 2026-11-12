@@ -1,5 +1,9 @@
 # Local setup
 
+Máy Windows hiện tại đã có PostgreSQL 18 trên port 5433. Ưu tiên
+[hướng dẫn PostgreSQL local](../backend/postgresql-local.md) và launcher
+`.\scripts\run-backend-local.ps1`; Docker/Compose bên dưới là lựa chọn cho máy khác.
+
 Backend MVP đã có code nhưng PostgreSQL integration chưa kiểm chứng.
 Hướng dẫn BE đầy đủ: [runbook](../backend/runbook.md), [API examples](../backend/api-examples.md).
 Trạng thái hợp đồng `implemented-unverified` trong

@@ -38,8 +38,17 @@ public class AdminProvisioning implements ApplicationRunner {
       throw new IllegalStateException("Admin provisioning requires an interactive console");
     String email = console.readLine("Admin email: ");
     String name = console.readLine("Full name: ");
-    char[] chars = console.readPassword("Password (hidden): ");
-    if (chars == null) throw new IllegalStateException("Password required");
+    char[] chars;
+    while (true) {
+      chars = console.readPassword("Admin password (12-128 Unicode characters, hidden): ");
+      if (chars == null) {
+        context.close();
+        throw new IllegalStateException("Admin password input cancelled; no account created");
+      }
+      if (validPasswordLength(chars)) break;
+      Arrays.fill(chars, '\0');
+      console.printf("Password must contain 12-128 Unicode characters. Please try again.%n");
+    }
     try {
       var n =
           new ObjectMapper()
@@ -63,5 +72,9 @@ public class AdminProvisioning implements ApplicationRunner {
       Arrays.fill(chars, '\0');
       context.close();
     }
+  }
+  static boolean validPasswordLength(char[] password) {
+    int length = Character.codePointCount(password, 0, password.length);
+    return length >= 12 && length <= 128;
   }
 }
