@@ -1,9 +1,9 @@
-# Kiến trúc RideGuard — implemented foundation / proposed MVP
+# Kiến trúc RideGuard — phần đã triển khai và thiết kế thiết bị
 
-Monorepo và đường dẫn thực tế giữ nguyên. Backend MVP đã có code; unit/slice tests qua, PostgreSQL integration chưa chạy.
-FE foundation, firmware startup/stubs, Python session split giữ nguyên; chưa có ML/hardware
-đã kiểm chứng. Xem [hiện trạng BE](../backend/current-state.md). [Implemented API](../../contracts/openapi.yaml),
-[proposed MVP](../../contracts/openapi.proposed.yaml), [deferred](../roadmap.md).
+Cập nhật13/11/2026: backend MVP, web quản trị/Lab và Android REST đã có code.
+Backend đã có PostgreSQL integration/runtime; client có phạm vi kiểm chứng riêng.
+BLE/GPS/ESP32/risk pipeline trong sơ đồ là thiết kế cần triển khai, không phải đường tích hợp đã chạy.
+Xem [hiện trạng ba ứng dụng](../tien-do-du-an.md), [API implemented](../../contracts/openapi.yaml).
 
 ```mermaid
 flowchart LR
@@ -26,14 +26,9 @@ hành trình trong MVP và không là tín hiệu chính kích hoạt cảnh bá
 
 ## Trách nhiệm theo đường dẫn thật
 
-- apps/mobile: Kotlin/Compose user FE; future features auth/devices/navigation/settings/
-  feedback; shared networking/BLE/storage/models/UI tách adapter. Hiện có foundation
-  navigation và API URL; Room trip queue không thuộc MVP.
-- apps/admin-web: React/TypeScript admin FE; future auth/users/devices/feedback; backend
-  phải kiểm ADMIN, không chỉ ẩn nút. Không dashboard số liệu giả hoặc trang vị trí.
-- apps/backend: Spring Boot com.rideguard auth/users/devices/feedback/shared đã có code;
-  devices gồm bindings/config/reports. Controller/DTO/service/JDBC repository, V2 migration;
-  integration PostgreSQL chưa chạy.
+- apps/mobile: Kotlin/Compose, auth/profile/sessions/devices/config/feedback qua REST, Keystore refresh; chưa BLE/GPS/ACK/report.
+- apps/admin-web: React/TypeScript, ADMIN UI và Lab development; auth guard, cookie refresh, API client. Không dùng fixture làm dữ liệu production.
+- apps/backend: Spring Boot com.rideguard auth/users/devices/feedback/shared/demo; JDBC/FlywayV1/V2,31 nghiệp vụ+3health; PostgreSQL integration và local runtime đã có bằng chứng.
 - firmware: drivers/radar có chọn LD2451/LD2417 tại build, stubs NotImplemented. Planned
   drivers/imu/display/vibration, tracking/features/risk/navigation/communication/ui/power/
   diagnostics; không tạo thư mục rỗng hoặc kích GPIO chưa xác nhận.
@@ -47,7 +42,7 @@ hành trình trong MVP và không là tín hiệu chính kích hoạt cảnh bá
 ## Dữ liệu và ranh giới
 
 MVP giữ tài khoản/session, USER/ADMIN, serial binding/history, config mỗi ownership,
-mobile status reports, feedback/admin. DB có V2 cho7 nghiệp vụ+3 kỹ thuật, chưa chạy integration; V1 giữ nguyên chỉ schema. Config desired≠applied; ACK mobile không hardware proof. Reports không online
+mobile status reports, feedback/admin. DB có V2 cho7 nghiệp vụ+3 kỹ thuật, đã có bằng chứng PostgreSQL integration; V1 giữ nguyên chỉ schema. Config desired≠applied; ACK mobile không hardware proof. Reports không online
 realtime. Lịch sử liên kết vẫn MVP dù lịch sử hành trình deferred. Device registry status
 không là lệnh tắt ESP32. Không OTA/payment/sharing/possession challenge trong MVP.
 

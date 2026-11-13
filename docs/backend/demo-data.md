@@ -79,3 +79,9 @@ phải còn null. Không nhầm tài khoản PostgreSQL `rideguard` với tài k
 
 Kết quả thực thi cụ thể và các phần chưa kiểm chứng nằm trong
 [báo cáo ngày 13/11](../testing/frontend-demo-2026-11-13.md).
+
+## Trạng thái dữ liệu được ghi nhận
+
+Chưa có bằng chứng full seed đã chạy/chạy lại: lần chuẩn bị trước thiếu `DEMO_USER1_PASSWORD` và `DEMO_USER2_PASSWORD`; lần dọn docs không đọc lại secret hay truy vấn DB. Ba test seed là kiểm thử mock, không chứng minh đã tạo dữ liệu local.
+
+Serial riêng `RG-DEMO-ABEA7C` đã được thêm thủ công vào registry, ACTIVE, model RideGuard Demo, hardware revision REST-TEST để thử Android. Lúc tạo chưa bind; không cam kết còn trống sau thao tác người dùng. Không tạo kèm config, ACK hoặc report. Serial này không thuộc bộ năm serial của script; không coi nó là bằng chứng full seed thành công.

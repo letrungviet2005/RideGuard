@@ -1,7 +1,9 @@
-# Device status reporting — backend code, integration chưa kiểm chứng
+# Device status reporting — backend implemented, chưa có telemetry phần cứng thật
 
-[Schema](../../contracts/device-report.schema.json), [REST](../../contracts/openapi.proposed.yaml).
-Đã có backend controller; chưa kiểm chứng PostgreSQL hoặc BLE telemetry. Mobile báo quan sát thực sự do ESP32 cung cấp,
+Trạng thái kiểm chứng theo ngày: [báo cáo chung](../tien-do-du-an.md). Nội dung flow/ERD không tự chứng minh client hoặc phần cứng đã hoạt động.
+
+[Schema](../../contracts/device-report.schema.json), [REST](../../contracts/openapi.yaml).
+Đã có backend controller; đã kiểm chứng PostgreSQL; chưa có BLE telemetry thật. Mobile báo quan sát thực sự do ESP32 cung cấp,
 không suy OK chỉ vì BLE kết nối. Tất cả trường required: binding_id, observed_at,
 firmware_version nullable<=64, radar/imu/display/vibration_status OK/ERROR/UNAVAILABLE/
 UNKNOWN, battery_percent integer 0–100 hoặc null. Chưa đo pin thì null. Không raw radar,

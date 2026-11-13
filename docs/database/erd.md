@@ -1,4 +1,6 @@
-# ERD MVP — V2 có code, database chưa kiểm chứng
+# ERD MVP — cấu trúc V2 đã có migration/integration evidence
+
+Trạng thái kiểm chứng theo ngày: [báo cáo chung](../tien-do-du-an.md). Nội dung flow/ERD không tự chứng minh client hoặc phần cứng đã hoạt động.
 
 [Schema chi tiết](schema.md): 7 bảng nghiệp vụ và 3 kỹ thuật, migration V2 đã có, chưa thực thi integration PostgreSQL.
 

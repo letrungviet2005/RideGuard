@@ -1,7 +1,9 @@
-# Authentication — code MVP, integration PostgreSQL chưa kiểm chứng
+# Authentication — backend implemented, client và SMTP có giới hạn kiểm chứng
+
+Trạng thái kiểm chứng theo ngày: [báo cáo chung](../tien-do-du-an.md). Nội dung flow/ERD không tự chứng minh client hoặc phần cứng đã hoạt động.
 
 Đã có JWT/auth controller/JDBC, không admin mặc định. Security mở từng nhóm auth/Bearer/admin;
-web auth giữ strict Origin/custom CSRF. Xem [runbook](../backend/runbook.md). [Contract](../../contracts/openapi.proposed.yaml).
+web auth giữ strict Origin/custom CSRF. Xem [runbook](../backend/runbook.md). [Contract](../../contracts/openapi.yaml).
 
 Register full_name 1–100 trim, email <=254 trim/lowercase toàn địa chỉ (không provider dot/plus),
 password 12–128 ký tự Unicode không trim/normalize/cắt ngắn. Server gán USER/ACTIVE. Password

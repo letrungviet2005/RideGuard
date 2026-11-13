@@ -1,4 +1,6 @@
-# Database MVP — migration V2 có code, chưa chạy PostgreSQL integration
+# Database MVP — V1/V2 đã có bằng chứng PostgreSQL integration
+
+Trạng thái kiểm chứng theo ngày: [báo cáo chung](../tien-do-du-an.md). Nội dung flow/ERD không tự chứng minh client hoặc phần cứng đã hoạt động.
 
 Nguồn API: [OpenAPI proposed](../../contracts/openapi.proposed.yaml). Thiết kế gồm **7 bảng
 nghiệp vụ + 3 bảng kỹ thuật = 10 bảng**, không phải chỉ bảy bảng. V1 giữ nguyên checksum, chỉ tạo schema. V2__mvp.sql tạo10 bảng và function/trigger,
@@ -189,7 +191,7 @@ accepted/received_at; feedback response nullable thời điểm đúng admin_res
 
 Retention token family, reset hash, config versions, binding history và minimal idempotency
 markers cần chính sách trước production; report30 ngày/cache response7 ngày đã có code cleanup; vận hành vẫn cần duyệt.
-Không xóa account/device/binding tự động vì có lịch sử. V2 migration đã viết, chưa chạy ở database thực tế. [ERD](erd.md) mô tả cấu trúc V2,
+Không xóa account/device/binding tự động vì có lịch sử. V2 đã chạy trên DB test17.11 và local18.6; full integration18 chưa được xác nhận. [ERD](erd.md) mô tả cấu trúc V2,
 không là bằng chứng deployed database. Cấm tự khóa/khóa admin ACTIVE cuối qua advisory lock.
 Config snapshot equality có deferred constraint trigger; issued version cấm UPDATE bằng trigger.
 Cross-row session family/generation và report ordering do service dưới row lock thực thi.

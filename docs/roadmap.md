@@ -1,34 +1,23 @@
-# Roadmap — proposed MVP và deferred
+# Roadmap RideGuard
 
-Nguồn MVP hiện hành: [API](api/proposed-api.md), [architecture](architecture/system-overview.md),
-[database](database/schema.md). Backend MVP đã có PostgreSQL integration/local runtime smoke ngày 2026-11-09; không coi roadmap là
-bằng chứng chạy thực tế. [Hiện trạng BE](backend/current-state.md).
+Hiện trạng và thứ tự công việc cụ thể ở [tiến độ dự án](tien-do-du-an.md). Roadmap xác định phạm vi phát triển, không phải bằng chứng đã chạy. API đã triển khai ở [OpenAPI implemented](../contracts/openapi.yaml); [proposed](api/proposed-api.md) giữ ngữ cảnh thiết kế.
 
-## Proposed MVP tiếp theo
+## Ưu tiên MVP còn lại
 
-1. Bộ PostgreSQL integration/migration và SMTP sink đã đạt; tiếp tục SMTP thật, browser HTTPS, origins,
-   retention/load và vận hành. Không coi local smoke là xác nhận production hoặc phần cứng.
-2. Chốt radar/IMU/wiring/protocol, decoder fixtures, baseline UNKNOWN-aware; BLE navigation/
-   config ACK/status; test mất Internet/auth/BLE không ngừng core warnings.
-3. Thu session có provenance, radar+IMU alignment, đánh giá fused features và ML nhẹ so
-   baseline. Duyệt policy đổi hướng và bị đâm phía sau khi đi thẳng trước tuyên bố chức năng.
+1. Ổn định toolchain Android và nghiệm thu luồng UI–BE thật cho Android/web; hoàn thiện các khoảng trống UI đã chỉ ra trong báo cáo đối chiếu API. Seed local và kiểm tra chạy lại khi đủ credential.
+2. Chốt radar/IMU/wiring/protocol, decoder fixtures, baseline UNKNOWN-aware; triển khai BLE navigation/config apply/ACK/status. Kiểm tra mất Internet/auth/BLE không làm ngừng cảnh báo cốt lõi.
+3. Thu session có provenance, đồng bộ radar–IMU, đánh giá ML nhẹ so baseline. Đo false alarms, dangerous misses, latency, RAM và nguồn trước tuyên bố hiệu quả.
+4. Kiểm tra PostgreSQL 18 đầy đủ, SMTP thật, HTTPS/cookie/origins, retention/load, backup/restore và vận hành. Local smoke và SMTP sink không thay thế production validation.
 
 ## Deferred — ngoài MVP
 
-- Lịch sử hành trình, GPS coordinate recording/upload, route storage, trip statistics,
-  trips/trip_points tables, REST /trips, Room/background trip sync. Tài liệu cũ giữ tại
-  [trip-recording-sync](flows/trip-recording-sync.md), được đánh dấu deferred duy nhất.
-- Challenge/proof sở hữu bằng BLE và device_claim_requests; MVP chỉ serial prototype.
-- OTA, payment, device sharing. Không có các endpoint/schema nghiệp vụ này trong MVP.
-- AI inference REST/server không thuộc MVP; local pipeline ESP32 là ranh giới bắt buộc.
+- Trips, GPS recording/upload, route storage, trip statistics, bảng trips/trip_points, REST /trips, Room/background trip sync. [Flow cũ](flows/trip-recording-sync.md) được giữ để giải thích phần deferred.
+- BLE ownership challenge/proof và device_claim_requests; MVP dùng serial prototype.
+- OTA, payment và device sharing.
+- AI inference REST/server; pipeline cảnh báo local ESP32 là ranh giới kiến trúc.
 
-GPS phục vụ navigation vẫn thuộc MVP; không thu log vị trí/hành trình nhân danh roadmap.
-Lịch sử device_bindings vẫn thuộc MVP, không bị xóa cùng trip history.
+GPS navigation và lịch sử device_bindings vẫn thuộc MVP.
 
-## Quyết định cần duyệt
+## Các quyết định còn cần chốt và kiểm chứng
 
-Deployment domains, CORS/SameSite/CSRF và cookie policy; admin recovery vận hành (CLI đã có, tự khóa/khóa admin cuối bị chặn);
-retention marker idempotency sau cache 7 ngày, reports 30 ngày, token/binding/config history;
-timestamp tolerance reports−24h/+5min và rate limits; hardware/radar/IMU, BLE UUID/MTU/security;
-brightness với cảnh báo HUD (vibration=false tắt cơ cấu rung đã chốt); fused risk policies cho
-hai tình huống riêng. Đây là proposals, không cấu hình đã cài hay chứng cứ đã test.
+Domain triển khai, HTTPS/cookie/CORS/CSRF và recovery ADMIN vận hành; retention/erasure và lịch chạy dọn dữ liệu; phần cứng, BLE UUID/MTU/security; quan hệ brightness với cảnh báo HUD và chính sách risk. Các giá trị đã xuất hiện trong API/code phải đối chiếu implementation, không mặc định tất cả còn là đề xuất. Không thay hợp đồng hoặc migration đã áp dụng chỉ bằng sửa tài liệu.

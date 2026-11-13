@@ -1,5 +1,14 @@
 # Kiểm chứng Android REST MVP — 13/11/2026
 
+## Diễn biến sau lượt kiểm chứng ban đầu — 13/11
+
+APK đã được `installDebug` cài lên một emulator và `am start -W` trả `Status: ok`; readiness BE đã UP trong lượt đó. Chưa kiểm chứng toàn luồng UI–BE hoặc chạy ba instrumentation test. Artifact build hiện tại được đọc có URL emulator `http://10.0.2.2:8080`; phần hash/APK LAN phía dưới ghi artifact của lượt ban đầu, không áp dụng mặc nhiên cho APK mới.
+
+Khi rà docs sau đó, URL wrapper đã trở lại 9.7.1 nhưng checksum vẫn của 8.11.1. Kết quả build đạt phía dưới thuộc bộ 8.11.1; không chứng minh wrapper hiện tại build được. Lần dọn docs không sửa wrapper, không chạy lại test. [Hiện trạng và bước tiếp theo](../tien-do-du-an.md).
+
+## Báo cáo lượt ban đầu
+
+
 Phạm vi: `apps/mobile`, README và tài liệu mobile. Đọc git status trước sửa;
 không tìm thấy AGENTS.md trong repo hoặc các thư mục tổ tiên đã kiểm tra.
 Không sửa backend, V1/V2, firmware/CAD hoặc hợp đồng implemented; không push/deploy.

@@ -1,7 +1,9 @@
 # Configuration sync — backend code, BLE chưa triển khai
 
-[Schema](../../contracts/device-config.schema.json), [REST](../../contracts/openapi.proposed.yaml).
-Đã có backend controller/service/repository; PostgreSQL integration và BLE apply chưa kiểm chứng. Config gắn binding, new binding có schema_version 1,
+Trạng thái kiểm chứng theo ngày: [báo cáo chung](../tien-do-du-an.md). Nội dung flow/ERD không tự chứng minh client hoặc phần cứng đã hoạt động.
+
+[Schema](../../contracts/device-config.schema.json), [REST](../../contracts/openapi.yaml).
+Đã có backend controller/service/repository; PostgreSQL integration đã có bằng chứng; BLE apply chưa triển khai/kiểm chứng. Config gắn binding, new binding có schema_version 1,
 desired_version 1, applied=null, defaults brightness 70/vibration=true.
 
 Settings chỉ display_brightness integer 0–100, vibration_enabled boolean. vibration_enabled=false tắt cơ cấu rung; HUD và pipeline nguy cơ vẫn hoạt động.

@@ -15,5 +15,5 @@ changes require consumer review and checks. Distinguish implemented/proposed/def
 contracts/openapi.yaml is implemented, contracts/openapi.proposed.yaml is proposed MVP,
 and docs/roadmap.md owns deferred scope. Do not restore trips from archived plans into MVP.
 Do not bypass security checks to unblock UI or label missing sensor data SAFE.
-Run [component commands](docs/development/local-setup.md) before merge; record unavailable
+Run [component commands](docs/huong-dan-chay-du-an.md) before merge; record unavailable
 checks and their reason instead of claiming a pass. No automatic deployment is configured.

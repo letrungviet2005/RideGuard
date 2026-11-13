@@ -91,6 +91,6 @@ Health UI gọi đúng routes nhưng backend hiện chỉ có CORS `/api/**`: cr
 
 ## Bước tiếp theo
 
-Theo [runbook](runbook.md) mục 2: bật Docker Engine hoặc chuẩn bị PostgreSQL, nạp secret backend, tạo ADMIN cá nhân bằng CLI tương tác rồi chạy BE. Đăng nhập FE bằng email/password vừa tạo. Không có tài khoản mặc định; fixture không phải tài khoản thật. Sau đó chạy smoke thật từ đăng nhập ADMIN → registry → USER Lab bind/config/ACK/report/feedback → admin reply → unbind, kiểm tra lại quyền cũ và cookie refresh/reload.
+Theo [hướng dẫn khởi chạy](../huong-dan-chay-du-an.md): bật Docker Engine hoặc chuẩn bị PostgreSQL, nạp secret backend, tạo ADMIN cá nhân bằng CLI tương tác rồi chạy BE. Đăng nhập FE bằng email/password vừa tạo. Không có tài khoản mặc định; fixture không phải tài khoản thật. Sau đó chạy smoke thật từ đăng nhập ADMIN → registry → USER Lab bind/config/ACK/report/feedback → admin reply → unbind, kiểm tra lại quyền cũ và cookie refresh/reload.
 
 [Bảng đối chiếu 34 API](api-coverage.md) ghi màn hình và bằng chứng fixture; không đánh dấu toàn bộ API là live verified.

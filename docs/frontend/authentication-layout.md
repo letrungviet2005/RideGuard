@@ -82,3 +82,47 @@ Nó dùng browser context riêng, logout phiên test của chính mình; không 
 Biến trong `.env` không tự nạp vào Node; nạp bằng loader tin cậy như runbook, không in giá trị.
 
 Xem [dữ liệu demo](../backend/demo-data.md) và [báo cáo kiểm chứng](../testing/frontend-demo-2026-11-13.md).
+
+## Kiểm tra web và xử lý lỗi
+
+
+Từ `apps/admin-web`:
+
+```powershell
+npm run api:check
+npm run typecheck
+npm run lint
+npm test
+$env:VITE_ENABLE_MOBILE_LAB = 'true'
+$env:VITE_API_BASE_URL = 'http://127.0.0.1:8080'
+npm run test:ui
+```
+
+- `api:check`: DTO và routes sinh từ 34 operations của hợp đồng implemented; cập nhật bằng `npm run api:generate` khi hợp đồng thay đổi.
+- `typecheck`: app và test TS strict; `lint`: các rule ESLint/TypeScript đã cấu hình, không phải chứng minh không có memory leak.
+- `npm test`: 18 unit/client tests với transport giả lập, không phải integration PostgreSQL.
+- `test:ui`: build, 14 test Chrome development fixture và 1 kiểm tra production. Cần Chrome hoặc `$env:PLAYWRIGHT_CHANNEL='msedge'`. Server test riêng port 5176/5177, không dùng lại server có sẵn; tự dừng sau test. Report `test-results/report.json`, ảnh `test-results/*.png` bị gitignore. Fixtures chỉ trong test, không có fallback production.
+- `npm run build`, `npm run preview`: output `dist/`, preview port 4173. Nếu thử BE qua preview thêm chính xác origin vào allowlist. Production cần HTTPS, cookie Secure và SPA fallback về `index.html`; Lab không có route/module trong bundle.
+- Windows EPERM khi `npm ci` đụng `esbuild.exe`: dừng dev server của chính bạn bằng Ctrl+C trước khi cài; không dừng mọi tiến trình Node hoặc server người khác.
+
+Từ gốc repository, checker độc lập:
+
+```powershell
+.\scripts\.venv\Scripts\python.exe scripts/check_contracts.py
+git diff --check
+```
+
+### Xử lý lỗi và giới hạn
+
+- **Không kết nối được DB:** môi trường hiện tại dùng PostgreSQL Windows port 5433; kiểm tra service và cấu hình theo hướng dẫn chung. Docker chỉ cần khi chủ động chọn môi trường Docker riêng. Không coi fixture là BE đạt.
+- **NETWORK_OR_CORS:** kiểm tra BE8080, origin FE đúng allowlist. Cùng `http://127.0.0.1` khác port là same-site nhưng cross-origin nên vẫn cần CORS/credentials; `localhost` và `127.0.0.1` không hoán đổi. Trình duyệt tự đặt Origin, FE không giả lập header này. Không dùng `no-cors`.
+- **Health trong FE lỗi nhưng mở URL trực tiếp được:** backend hiện chỉ cấu hình CORS cho `/api/**`, không cho `/actuator/**`. Dùng `Invoke-RestMethod http://127.0.0.1:8080/actuator/health/readiness` hoặc reverse proxy cùng origin. FE không sửa BE để bỏ giới hạn này.
+- **Cookie local:** profile `local`, `COOKIE_SECURE=false`, SameSite Lax và cùng host/scheme. Production phải HTTPS/Secure; chưa kiểm chứng cookie thật đa trình duyệt trong nhiệm vụ này.
+- **401:** single-flight refresh, mỗi request tối đa một retry xác thực; refresh lỗi thì xóa phiên, không lặp credential cũ. Lỗi mạng mutation không tự gửi lại. Bind/feedback giữ idempotency key cho cùng payload trong form đang mở; reload làm mất key, cần đối chiếu server trước thao tác mới.
+- **409 config:** giữ bản nháp, hiển thị bản server để so sánh; tải lại/bỏ nháp rõ ràng trước lần lưu tiếp. Không tự ghi đè/ACK.
+- **Unbind:** hộp xác nhận giữ `expected_binding_id` từ dữ liệu đã xem; lỗi stale binding phải tải lại, không ép retry bằng binding mới.
+- **ADMIN_SELF_LOCK / LAST_ADMIN / 403:** hiển thị lỗi và `request_id` từ BE; UI không bỏ kiểm tra quyền backend.
+
+Xem [bao phủ từng API](api-coverage.md) và [kết quả thực tế](verification-status.md). Đã có smoke anonymous với BE thật; login/rotation/logout ADMIN thật, email ngoài, HTTPS cookie và phần cứng vẫn chưa có bằng chứng nghiệm thu đầy đủ.
+
+Cách chạy BE/FE, tạo ADMIN và cấu hình PostgreSQL: [hướng dẫn chung](../huong-dan-chay-du-an.md).

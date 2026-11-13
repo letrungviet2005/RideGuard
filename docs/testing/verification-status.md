@@ -4,8 +4,8 @@
 
 APK debug build và lint đạt (0 errors, 7 cảnh báo dependency mới hơn); 17 JVM fixture
 tests và 1 smoke client Kotlin với BE local đạt, 0 failure/error/skipped ở các lượt đó.
-Ba instrumentation tests đã biên dịch nhưng chưa chạy do không có device/AVD.
-Device flow thật chưa chạy vì local chưa có serial demo; không có ACK/report giả.
+Ba instrumentation tests đã biên dịch nhưng chưa chạy. Trong lượt ban đầu chưa có device/AVD hoặc serial demo. Sau đó APK đã cài/mở trên emulator và một serial thử đã được tạo; chưa có bằng chứng toàn luồng device UI–BE, không có ACK/report giả.
+Wrapper hiện lại trỏ 9.7.1 với checksum 8.11.1; kết quả build trên thuộc bộ 8.11.1. Xem [tiến độ hiện tại](../tien-do-du-an.md).
 Chi tiết, lệnh và giới hạn ở [báo cáo Android](../mobile/verification-2026-11-13.md).
 Không dùng kết quả này để tuyên bố Android/ESP32 end-to-end đã được kiểm chứng.
 
@@ -28,7 +28,7 @@ Xem [báo cáo chi tiết và tên từng test](backend-reverification-2026-11-0
 ## 2026-11-08 — backend MVP: code, unit tests; PostgreSQL integration chưa chạy
 
 Đã viết31 API nghiệp vụ, V2 migration10 bảng, HTTP/auth/ownership/config/reports/feedback/admin,
-SMTP adapter và CLI provisioning. Không dùng mock thay implementation production. [Hiện trạng](../backend/current-state.md).
+SMTP adapter và CLI provisioning. Không dùng mock thay implementation production. [Hiện trạng](../../apps/backend/README.md).
 
 Đã chạy trên JDK21 portable và Maven Wrapper3.9.11:
 

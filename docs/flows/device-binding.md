@@ -1,6 +1,8 @@
-# Device binding — code MVP, PostgreSQL integration chưa kiểm chứng
+# Device binding — backend implemented, mobile REST đã có code
 
-[REST](../../contracts/openapi.proposed.yaml), [DB](../database/schema.md). Serial-only cho
+Trạng thái kiểm chứng theo ngày: [báo cáo chung](../tien-do-du-an.md). Nội dung flow/ERD không tự chứng minh client hoặc phần cứng đã hoạt động.
+
+[REST](../../contracts/openapi.yaml), [DB](../database/schema.md). Serial-only cho
 nguyên mẫu; không proof sở hữu vật lý, không challenge BLE trong MVP.
 
 1. Authenticated ACTIVE caller gửi serial_number/nickname optional, key UUID. Normalize

@@ -1,13 +1,12 @@
 # Hướng dẫn khởi chạy RideGuard trên Windows
 
-Áp dụng cho web quản trị và backend chạy local. Máy hiện tại có PostgreSQL 18 cài trực tiếp, dịch vụ `postgresql-x64-18`, cổng **5433**. Không cần Docker cho quy trình này. Tất cả lệnh bắt đầu từ thư mục gốc RideGuard trong PowerShell.
+Áp dụng cho backend, web quản trị và Android emulator chạy local. Máy hiện tại có PostgreSQL 18 cài trực tiếp, dịch vụ `postgresql-x64-18`, cổng **5433**. Không cần Docker cho quy trình này. Tất cả lệnh bắt đầu từ thư mục gốc RideGuard trong PowerShell.
 
 ## 1. Cần chuẩn bị những gì?
 
 **Trạng thái máy ngày 2026-11-12:** đã tạo user/database `rideguard`, lưu mật khẩu ứng dụng
 riêng trong `apps/backend/.env`, chạy thành công migration V1/V2 và nhận readiness `UP`.
-FE đã trả HTTP 200 ở cổng 5173. Có thể bỏ qua bước tạo database trên máy này; vẫn cần tạo
-tài khoản web ADMIN ở mục 3. Đây là trạng thái lúc kiểm tra, không bảo đảm process còn chạy
+FE đã trả HTTP 200 ở cổng 5173. Có thể bỏ qua bước tạo database trên máy này. Theo lần kiểm tra sau đã có ADMIN; chỉ làm mục 3 nếu cần tạo tài khoản mới. Đây là trạng thái lúc kiểm tra, không bảo đảm process còn chạy
 sau khi đóng terminal/khởi động lại máy.
 
 - PostgreSQL đang chạy; có database `rideguard` và user `rideguard` với mật khẩu bạn quản lý.
@@ -150,3 +149,24 @@ Xem [chi tiết seed](backend/demo-data.md) và [báo cáo kiểm chứng](testi
 Sau reload web tự khôi phục cookie, không cần bấm nút khôi phục. Khi chưa xác thực,
 chỉ hiện login/loading; sidebar chỉ xuất hiện cho ADMIN. Mở `/devices` khi chưa
 đăng nhập sẽ chuyển về login rồi trở lại trang đó sau khi đăng nhập thành công.
+
+## Android — terminal thứ ba
+
+Mở Android Studio → Device Manager → khởi động emulator. BE vẫn chạy bằng mục 4.
+**Trước build:** wrapper hiện trỏ Gradle 9.7.1 nhưng checksum của 8.11.1. Bộ đã build đạt là 8.11.1/AGP 8.9.2; cần đồng bộ URL/checksum theo bộ này, không bỏ checksum. Docs không tự sửa wrapper của người dùng.
+
+Sau khi giải quyết wrapper, từ gốc repository:
+
+```powershell
+$env:JAVA_HOME=(Resolve-Path '.local/jdk21/jdk-21.0.13+9').Path
+$env:ANDROID_HOME="$env:LOCALAPPDATA/Android/Sdk"
+& "$env:ANDROID_HOME/platform-tools/adb.exe" devices
+.\apps\mobile\gradlew.bat -p apps/mobile :app:installDebug '-Prideguard.apiBaseUrl=http://10.0.2.2:8080'
+& "$env:ANDROID_HOME/platform-tools/adb.exe" shell monkey -p com.rideguard.mobile.debug -c android.intent.category.LAUNCHER 1
+```
+
+Máy không có JDK tại đường dẫn trên dùng JDK 21 đã cài. Chọn đúng emulator nếu adb thấy nhiều thiết bị. `10.0.2.2` là máy host từ Android emulator; điện thoại Android thật dùng IP LAN của máy BE theo [setup Android](mobile/local-setup.md). Không dùng localhost của emulator để gọi BE trên Windows.
+
+Nếu đã có APK phù hợp, có thể cài bằng `adb install -r apps/mobile/app/build/outputs/apk/debug/app-debug.apk`; việc này không rebuild hoặc cập nhật URL đã đóng gói. Mở RideGuard trên emulator, đăng ký/đăng nhập USER; tài khoản ADMIN dùng cho web. Bind cần serial ACTIVE còn trống. Chưa có BLE nên lưu config chỉ lưu server, chưa gửi ACK thực.
+
+Các lệnh trên là hướng dẫn chạy lại, không được thực thi trong lần dọn tài liệu. Xem [kết quả Android](mobile/verification-2026-11-13.md) để phân biệt cài/mở APK với kiểm chứng toàn bộ luồng UI.

@@ -33,3 +33,39 @@ Reviewed official compatibility documentation on 2026-11-06:
 
 These versions are an explicit compatibility baseline, not a claim of hardware validation
 or indefinite support. Update related versions together and run affected checks.
+
+## Python và firmware: lệnh riêng
+
+Chuyển từ local-setup cũ; là hướng dẫn, không phải kiểm chứng lại ngày13/11. Lệnh chạy từ gốc repo.
+
+
+```powershell
+py -3.11 -m venv ai/.venv
+ai/.venv/Scripts/python.exe -m pip install -e ./ai
+ai/.venv/Scripts/python.exe -m unittest discover -s ai/tests -v
+ai/.venv/Scripts/python.exe -m pip wheel --no-deps ./ai -w ai/dist
+py -3.11 -m venv scripts/.venv
+scripts/.venv/Scripts/python.exe -m pip install -r scripts/requirements.lock
+scripts/.venv/Scripts/python.exe scripts/check_contracts.py
+py -3.11 -m venv firmware/.venv
+firmware/.venv/Scripts/python.exe -m pip install -r firmware/requirements.lock
+firmware/.venv/Scripts/python.exe -m platformio run -d firmware -e ld2451 -e ld2417
+```
+
+On POSIX use `python3` and `.venv/bin/python`. AI has no runtime dependencies; pyproject
+pins build tooling. Firmware/scripts direct requirements and resolved requirements.lock
+are scoped independently. Refresh each lock intentionally and verify both Windows/Linux CI.
+
+On this workspace's Windows path, PlatformIO/esptool package scripts mishandle spaces and
+parentheses. Use an unused drive, e.g. `subst R: "<absolute repository path>"`, then run
+`R:\firmware\.venv\Scripts\python.exe -m platformio run -d R:\firmware -e ld2451 -e ld2417`.
+`subst R: /D` removes only the alias after build. Android sdkmanager batch launcher may
+also need this alias. No source files are moved. Install Android SDK 35/build-tools 35.0.0
+through Android Studio SDK Manager (or sdkmanager after accepting applicable licenses).
+
+
+## Android — lưu ý hiện trạng13/11
+
+Bộ đã build/install đạt là Gradle8.11.1 + checksum f397b287023acdba1e9f6fc5ea72d22dd63669d59ed4a289a29b1a76eee151c6.
+Lúc rà tài liệu, wrapper trên đĩa lại trỏ9.7.1 với checksum này; đây là lệch cấu hình cần xử lý trước build tiếp, không tắt kiểm tra checksum. Lượt tài liệu giữ nguyên file người dùng.
+PostgreSQL17.11 ở trên là baseline test/Compose; local Windows hiện là18.6 port5433.

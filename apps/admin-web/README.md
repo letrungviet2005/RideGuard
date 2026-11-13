@@ -28,9 +28,9 @@ Mở **http://127.0.0.1:5173**. Dùng `Ctrl+C` để dừng. Biến `VITE_*` cô
 
 ## Tài khoản đăng nhập và backend
 
-**Không có tài khoản ADMIN mặc định.** Tài khoản fixture trong test không tồn tại trong database thật; tài khoản của đợt kiểm chứng backend trước thuộc database tạm và không có mật khẩu dùng lại. Nhiệm vụ FE này chưa xác định được tài khoản trong DB phát triển vì Docker Engine/backend không hoạt động.
+**Không có tài khoản ADMIN mặc định.** Tài khoản fixture trong test không tồn tại trong database thật; tài khoản của đợt kiểm chứng backend trước thuộc database tạm và không có mật khẩu dùng lại. Theo lần kiểm tra local sau đó đã có ADMIN trong PostgreSQL Windows; dùng tài khoản đã tạo, không cần Docker. Không truy vấn lại tài khoản trong lần cập nhật docs.
 
-Làm theo [runbook frontend](../../docs/frontend/runbook.md) mục 2 để chuẩn bị PostgreSQL, nạp biến backend, chạy CLI tương tác tạo ADMIN rồi khởi chạy BE. Đăng nhập bằng email/mật khẩu **do bạn nhập khi tạo ADMIN**. CLI dùng profile `provision-admin`, không có tùy chọn `--admin-email`.
+Làm theo [hướng dẫn khởi chạy](../../docs/huong-dan-chay-du-an.md) để chuẩn bị PostgreSQL, nạp biến backend, chỉ tạo ADMIN bằng CLI khi chưa có, rồi khởi chạy BE. Đăng nhập bằng email/mật khẩu **do bạn nhập khi tạo ADMIN**. CLI dùng profile `provision-admin`, không có tùy chọn `--admin-email`.
 
 Để HTTP local hoạt động, backend cần profile `local`, `COOKIE_SECURE=false`, `COOKIE_SAME_SITE=Lax`, `ADMIN_ALLOWED_ORIGINS=http://127.0.0.1:5173`. Dùng thống nhất host `127.0.0.1` cho FE/BE; khác port là cross-origin nhưng vẫn same-site nếu cùng scheme/host. Không áp dụng cấu hình cookie HTTP này cho production.
 
@@ -54,7 +54,7 @@ DTO/routes sinh từ hợp đồng bằng `npm run api:generate`; `api:check` ph
 
 ## Tài liệu bàn giao
 
-- [Runbook: lệnh chạy, tài khoản, xử lý lỗi](../../docs/frontend/runbook.md)
+- [Runbook: lệnh chạy, tài khoản, xử lý lỗi](../../docs/frontend/authentication-layout.md)
 - [Đối chiếu từng API](../../docs/frontend/api-coverage.md)
 - [Kết quả kiểm chứng và giới hạn](../../docs/frontend/verification-status.md)
 

@@ -1,6 +1,8 @@
-# Chạy RideGuard Android trên điện thoại
+# Chạy RideGuard Android trên emulator hoặc điện thoại
 
 PowerShell từ **gốc repository**. Dùng PostgreSQL Windows local, không cần Docker.
+
+**Lưu ý hiện tại (13/11):** URL wrapper đang trỏ Gradle 9.7.1 nhưng checksum của 8.11.1. Các lệnh build dưới đây cần giải quyết cặp URL/checksum trước; bộ đã build đạt là 8.11.1/AGP 8.9.2. Không bỏ kiểm tra checksum. Xem [tiến độ](../tien-do-du-an.md).
 
 ## 1. Chạy BE
 

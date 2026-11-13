@@ -32,7 +32,7 @@ Không truyền API property thì mặc định emulator `http://10.0.2.2:8080`.
 Đặt tham số -P có dấu chấm trong dấu nháy trên PowerShell.
 
 Gradle8.11.1, AGP8.9.2, Kotlin/Compose plugin2.1.20, JVM target17; build bằng JDK21.
-Wrapper checksum khớp Gradle8.11.1. Debug chỉ cho HTTP tới đúng host cấu hình;
+Đây là bộ đã build đạt. Hiện URL wrapper lại trỏ9.7.1 trong khi checksum của8.11.1; phải đồng bộ trước build tiếp. Debug chỉ cho HTTP tới đúng host cấu hình;
 release bắt buộc HTTPS, mặc định api.invalid, cần endpoint/signing riêng trước phát hành.
 
 ## Tài liệu và bằng chứng
@@ -41,6 +41,4 @@ release bắt buộc HTTPS, mặc định api.invalid, cần endpoint/signing ri
 - [Kiến trúc và quản lý phiên](../../docs/mobile/implementation.md).
 - [Kết quả kiểm chứng và giới hạn](../../docs/mobile/verification-2026-11-13.md).
 
-17 test JVM fixture và 1 smoke client Kotlin với BE thật đạt. Chưa có thiết bị ADB/AVD
-để chạy UI/Keystore instrumentation hay xác nhận cài/mở trên điện thoại. Không suy ra
-kiểm chứng phone từ build APK hoặc JVM smoke.
+17 test JVM fixture và 1 smoke client Kotlin với BE thật đạt. Sau lượt đó đã cài và mở APK trên emulator thành công; chưa chạy UI/Keystore instrumentation hoặc toàn luồng UI–BE. Không suy ra kiểm chứng điện thoại thật từ emulator/JVM smoke. Xem [tiến độ hiện tại](../../docs/tien-do-du-an.md).
