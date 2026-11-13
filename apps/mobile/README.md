@@ -1,37 +1,46 @@
 # RideGuard Android
 
-Kotlin/Compose, Gradle Kotlin DSL and checked-in Gradle 8.11.1 wrapper. AGP 8.9.2,
-compile/target API 35, min API 26; JDK 21 recommended. Install Android platform 35 and
-build-tools 35.0.0, set ANDROID_HOME or ignored local.properties sdk.dir.
+Ứng dụng người dùng Kotlin/Jetpack Compose, Material 3 xanh rừng, gọi [OpenAPI implemented](../../contracts/openapi.yaml). Cập nhật 13/11/2026.
 
-```sh
-./gradlew :app:assembleDebug :app:lintDebug
-./gradlew :app:installDebug
-./gradlew :app:assembleRelease -Prideguard.releaseApiBaseUrl=https://your-real-api-host
+Đã triển khai đăng ký/đăng nhập/quên/reset/logout; hồ sơ, mật khẩu, sessions;
+danh sách/chi tiết/nickname/bind/unbind/history; config CAS và xử lý 409;
+phản hồi có cursor và admin reply; tổng quan từ API thật. Auth/loading tách giao diện
+chính; form giữ qua rotation bằng ViewModel. Không có màn hình quản trị ADMIN.
+
+Access token trong memory; refresh JSON mobile mã hóa AES-GCM bằng Android Keystore,
+lưu trong noBackupFilesDir. Không cookie admin web hoặc plaintext credential.
+
+**Chưa có BLE/ESP32/cảm biến/AI/GPS.** Bind là liên kết tài khoản trên server, không
+phải Bluetooth. Không gửi ACK/report; save config hiện “Đã lưu trên máy chủ — chưa
+đồng bộ với gương”. Không giả số liệu, trạng thái online, pin hay sensor OK.
+
+## Build/cài nhanh
+
+PowerShell từ gốc repository, cần JDK và Android SDK35:
+
+```powershell
+$env:JAVA_HOME=(Resolve-Path '.local/jdk21/jdk-21.0.13+9').Path
+$env:ANDROID_HOME="$env:LOCALAPPDATA/Android/Sdk"
+.\apps\mobile\gradlew.bat -p apps/mobile :app:assembleDebug :app:lintDebug :app:testDebugUnitTest '-Prideguard.apiBaseUrl=http://192.168.1.68:8080'
+& "$env:ANDROID_HOME/platform-tools/adb.exe" devices
+& "$env:ANDROID_HOME/platform-tools/adb.exe" install -r apps/mobile/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Windows uses `./gradlew.bat`. installDebug needs an emulator/phone; release is unsigned
-until a private signing setup is supplied. Debug API URL defaults to emulator host alias
-http://10.0.2.2:8080; override with `-Prideguard.apiBaseUrl=http://192.168.1.10:8080` for
-a LAN test device. Release uses intentionally unreachable https://api.invalid unless
-configured; HTTP cleartext disabled in release. URL is public configuration, never a secret.
-Cloud backup and device transfer exclusions are explicit for Android 12+; earlier Android
-uses allowBackup=false. See [Android backup rules](https://developer.android.com/identity/data/autobackup).
+Thay IP theo máy BE. APK: `apps/mobile/app/build/outputs/apk/debug/app-debug.apk`;
+package `com.rideguard.mobile.debug`, min Android8/API26, target35.
+Không truyền API property thì mặc định emulator `http://10.0.2.2:8080`.
+Đặt tham số -P có dấu chấm trong dấu nháy trên PowerShell.
 
-**Implemented:** foundation/scope screens through Compose Navigation and API environment;
-no BLE/auth/location collection. Foundation screen copy still mentions trips; it is stale
-scope text, not a feature or current MVP requirement. Source UI is unchanged by this docs task.
+Gradle8.11.1, AGP8.9.2, Kotlin/Compose plugin2.1.20, JVM target17; build bằng JDK21.
+Wrapper checksum khớp Gradle8.11.1. Debug chỉ cho HTTP tới đúng host cấu hình;
+release bắt buộc HTTPS, mặc định api.invalid, cần endpoint/signing riêng trước phát hành.
 
-**Proposed MVP:** auth/devices/navigation/settings/feedback; shared networking/BLE/storage/
-models/UI. BLE adapter is separate from REST; backend never calls REST on the phone. Mobile
-calls [MVP API](../../contracts/openapi.proposed.yaml), receives refresh token in JSON and
-protects it with Android Keystore-backed storage; single-flight refresh, bounded retries,
-stable Idempotency-Key for bind/feedback. Config edits require Internet; after backend save,
-BLE apply then REST ACK. No BLE means pending sync, not applied. See
-[config flow](../../docs/flows/configuration-sync.md) and [report flow](../../docs/flows/device-status-reporting.md).
+## Tài liệu và bằng chứng
 
-GPS remains for user-started navigation and BLE cue/distance/TTL. Future location/foreground
-service permissions must match actual navigation lifecycle; denial/revocation means unavailable,
-not fabricated coordinates. BLE scan/connect permissions are separate. No GPS recording/upload,
-Room trip entities or background trip queue in MVP. [Old trip flow](../../docs/flows/trip-recording-sync.md)
-is **deferred**. Internet/auth expiry must not stop local ESP32 warnings.
+- [BE, API URL, Wi-Fi/firewall và cài APK](../../docs/mobile/local-setup.md).
+- [Kiến trúc và quản lý phiên](../../docs/mobile/implementation.md).
+- [Kết quả kiểm chứng và giới hạn](../../docs/mobile/verification-2026-11-13.md).
+
+17 test JVM fixture và 1 smoke client Kotlin với BE thật đạt. Chưa có thiết bị ADB/AVD
+để chạy UI/Keystore instrumentation hay xác nhận cài/mở trên điện thoại. Không suy ra
+kiểm chứng phone từ build APK hoặc JVM smoke.

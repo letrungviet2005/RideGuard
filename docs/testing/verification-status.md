@@ -1,5 +1,14 @@
 # Verification status
 
+## 2026-11-13 — Android REST MVP
+
+APK debug build và lint đạt (0 errors, 7 cảnh báo dependency mới hơn); 17 JVM fixture
+tests và 1 smoke client Kotlin với BE local đạt, 0 failure/error/skipped ở các lượt đó.
+Ba instrumentation tests đã biên dịch nhưng chưa chạy do không có device/AVD.
+Device flow thật chưa chạy vì local chưa có serial demo; không có ACK/report giả.
+Chi tiết, lệnh và giới hạn ở [báo cáo Android](../mobile/verification-2026-11-13.md).
+Không dùng kết quả này để tuyên bố Android/ESP32 end-to-end đã được kiểm chứng.
+
 ## 2026-11-09 — PostgreSQL integration và runtime đã chạy
 
 **27 test độc lập + 15 integration đạt, 0 failure/error/skipped** ở lần verify cuối.

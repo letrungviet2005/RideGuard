@@ -1,0 +1,76 @@
+<resources>
+    <string name="app_name">RideGuard</string>
+    <string name="tagline">Gương của bạn. Kết nối trong tầm tay.</string>
+    <string name="scope">Quản lý tài khoản và dữ liệu máy chủ. Chưa kết nối Bluetooth, ESP32 hoặc điều hướng GPS.</string>
+    <string name="login">Đăng nhập</string><string name="register">Tạo tài khoản</string>
+    <string name="forgot">Quên mật khẩu</string><string name="reset">Đặt lại mật khẩu</string>
+    <string name="home">Tổng quan</string><string name="devices">Thiết bị</string>
+    <string name="feedbacks">Phản hồi</string><string name="account">Tài khoản</string>
+    <string name="device">Chi tiết gương</string><string name="bind">Liên kết gương</string>
+    <string name="history">Lịch sử liên kết</string><string name="new_feedback">Gửi phản hồi</string>
+    <string name="feedback">Chi tiết phản hồi</string><string name="sessions">Phiên đăng nhập</string>
+    <string name="change_password">Đổi mật khẩu</string><string name="email">Email</string>
+    <string name="password">Mật khẩu</string><string name="full_name">Họ và tên</string>
+    <string name="password_hint">12–128 ký tự Unicode; giữ nguyên khoảng trắng.</string>
+    <string name="reset_token">Mã đặt lại nhận qua email</string><string name="current_password">Mật khẩu hiện tại</string>
+    <string name="new_password">Mật khẩu mới</string><string name="save">Lưu thay đổi</string>
+    <string name="send">Gửi</string><string name="logout">Đăng xuất</string>
+    <string name="back">Quay lại</string><string name="retry">Tải lại</string>
+    <string name="loading">Đang tải…</string><string name="restoring">Đang khôi phục phiên…</string>
+    <string name="sending">Đang gửi…</string><string name="empty">Chưa có dữ liệu.</string>
+    <string name="more">Xem thêm</string><string name="cancel">Hủy</string>
+    <string name="confirm">Xác nhận</string><string name="confirm_unbind">Hủy liên kết gương?</string>
+    <string name="unbind_body">Bạn sẽ mất quyền đọc và sửa cấu hình của liên kết này. Phản hồi đã gửi vẫn được giữ lại.</string>
+    <string name="unbind">Hủy liên kết</string><string name="serial">Serial đã đăng ký</string>
+    <string name="nickname">Tên gợi nhớ (tùy chọn)</string><string name="config">Cấu hình trên máy chủ</string>
+    <string name="brightness">Độ sáng màn hình (0–100)</string><string name="vibration">Bật rung</string>
+    <string name="desired">Phiên bản mong muốn: %1$d</string>
+    <string name="applied">Phiên bản gương đã xác nhận: %1$s</string><string name="unknown">Chưa có xác nhận</string>
+    <string name="pending_sync">Đã lưu trên máy chủ — chưa đồng bộ với gương</string>
+    <string name="config_note">Ứng dụng chưa có BLE nên không gửi xác nhận đã áp dụng cấu hình.</string>
+    <string name="conflict">Cấu hình đã thay đổi. Bản nháp vẫn được giữ. Xem bản mới từ máy chủ trước khi sửa và lưu lại.</string>
+    <string name="adopt_server">Dùng cấu hình máy chủ</string>
+    <string name="server_config">Máy chủ: v%1$d · độ sáng %2$d · rung %3$s</string>
+    <string name="yes">Bật</string><string name="no">Tắt</string>
+    <string name="category">Loại phản hồi</string><string name="bug">Báo lỗi</string>
+    <string name="suggestion">Góp ý</string><string name="other">Khác</string><string name="content">Nội dung</string>
+    <string name="feedback_device">Thiết bị liên quan (tùy chọn)</string><string name="general">Phản hồi chung</string>
+    <string name="admin_reply">Phản hồi từ quản trị viên</string><string name="no_reply">Chưa có trả lời.</string>
+    <string name="created">Ngày tạo: %1$s</string><string name="replied">Ngày trả lời: %1$s</string>
+    <string name="bound">Liên kết lúc: %1$s</string><string name="unbound">Hủy liên kết lúc: %1$s</string>
+    <string name="active">Đang hoạt động</string><string name="disabled">Đã vô hiệu hóa</string><string name="retired">Đã ngừng sử dụng</string>
+    <string name="open">Mới tiếp nhận</string><string name="feedback_in_progress">Đang xử lý</string><string name="resolved">Đã giải quyết</string>
+    <string name="binding_active">Đang liên kết</string><string name="binding_closed">Đã hủy liên kết</string>
+    <string name="current_session">Phiên hiện tại</string><string name="revoke">Thu hồi phiên</string>
+    <string name="revoke_question">Thu hồi phiên đăng nhập này?</string>
+    <string name="revoke_body">Thu hồi phiên hiện tại sẽ đưa bạn về màn hình đăng nhập.</string>
+    <string name="last_seen">Hoạt động gần nhất: %1$s</string><string name="expires">Hết hạn: %1$s</string>
+    <string name="welcome">Chào %1$s</string>
+    <string name="overview_note">Số liệu từ trang API đã tải, không phải tổng toàn hệ thống. Bấm Thiết bị hoặc Phản hồi để tải thêm.</string>
+    <string name="device_count">Gương đã tải: %1$d</string><string name="feedback_count">Phản hồi đã tải: %1$d</string>
+    <string name="pending_count">Cấu hình chờ đồng bộ trong nhóm đã tải: %1$d</string>
+    <string name="report_none">Chưa có quan sát từ gương. Không suy ra trạng thái online.</string>
+    <string name="report_age">Quan sát lúc %1$s · cách đây %2$d phút. Không phải trạng thái online trực tiếp.</string>
+    <string name="report_unknown_time">Thời điểm quan sát không hợp lệ; không thể suy ra độ mới.</string>
+    <string name="report_values">Radar: %1$s · IMU: %2$s · Pin: %3$s</string>
+    <string name="not_available">Chưa có dữ liệu</string>
+    <string name="network_error">Không thể xác minh kết quả do kết nối mạng. Với bind/phản hồi, thử lại cùng nội dung sẽ giữ nguyên khóa thao tác.</string>
+    <string name="restore_network">Không xác minh được phiên do mạng hoặc máy chủ. Hãy đăng nhập lại khi kết nối ổn định; không tự gửi lại refresh cũ.</string>
+    <string name="session_expired">Phiên đã hết hiệu lực hoặc tài khoản bị khóa. Vui lòng đăng nhập lại.</string>
+    <string name="invalid_login">Email hoặc mật khẩu không hợp lệ, hoặc tài khoản không được phép đăng nhập.</string>
+    <string name="invalid_request">Thông tin chưa hợp lệ. Kiểm tra các trường và thử lại.</string>
+    <string name="email_unavailable">Email đã được sử dụng.</string>
+    <string name="permission_error">Không có quyền truy cập hoặc tài nguyên không còn thuộc tài khoản này.</string>
+    <string name="operation_conflict">Thao tác xung đột với trạng thái hiện tại. Tải lại dữ liệu trước khi tiếp tục.</string>
+    <string name="generic_error">Chưa hoàn tất thao tác. Vui lòng thử lại. Mã: %1$s</string>
+    <string name="registered">Đã tạo tài khoản. Hãy đăng nhập để tiếp tục.</string>
+    <string name="email_sent">Nếu email phù hợp, hướng dẫn đặt lại mật khẩu sẽ được gửi. Kiểm tra hộp thư.</string>
+    <string name="reset_done">Đã đặt lại mật khẩu. Hãy đăng nhập bằng mật khẩu mới.</string>
+    <string name="saved">Đã lưu thay đổi.</string><string name="password_changed">Đã đổi mật khẩu và thu hồi các phiên khác.</string>
+    <string name="bound_notice">Đã liên kết tài khoản trên máy chủ; chưa kết nối Bluetooth.</string>
+    <string name="bind_help">Nhập serial đã được quản trị viên đăng ký. Thao tác chỉ liên kết tài khoản trên máy chủ, không kết nối Bluetooth.</string>
+    <string name="unbound_notice">Đã hủy liên kết trên máy chủ.</string><string name="sent_notice">Đã gửi phản hồi.</string>
+    <string name="brightness_error">Độ sáng phải là số nguyên từ 0 đến 100.</string>
+    <string name="api_host">Máy chủ: %1$s</string>
+    <string name="password_wrong">Mật khẩu hiện tại không đúng.</string>
+</resources>
